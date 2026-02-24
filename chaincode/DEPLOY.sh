@@ -12,7 +12,7 @@ CC_NAME="vanbang"
 
 echo "📦 Bước 0: Install chaincode dependencies..."
 cd "$CHAINCODE_DIR"
-npm install --production
+#npm install --production
 cd "$NETWORK_DIR"
 
 echo ""
