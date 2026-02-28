@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Card, Table, Button, Space, Tag, Typography, Divider, Empty, Popconfirm, message, Tooltip, Avatar } from "antd";
+import { Card, Table, Button, Space, Tag, Typography, Divider, Empty, Popconfirm, message, Tooltip } from "antd";
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
     ClockCircleOutlined,
     EyeOutlined,
-    UserOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { listDiplomas, approveDiploma, rejectDiploma } from "../api/diplomas"; // Import API

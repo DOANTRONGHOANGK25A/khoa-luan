@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { Card, Form, Input, InputNumber, Select, Button, Space, Upload, Typography, Divider, Row, Col, message, Avatar, Spin, Image, DatePicker } from "antd";
+import { Card, Form, Input, InputNumber, Select, Button, Upload, Typography, Divider, Row, Col, message, Avatar, Spin, Image, DatePicker } from "antd";
 import dayjs from "dayjs";
-import { InboxOutlined, PlusCircleOutlined, SaveOutlined, CloseOutlined, UserOutlined, CameraOutlined, EditOutlined, UploadOutlined } from "@ant-design/icons";
+import { PlusCircleOutlined, SaveOutlined, CloseOutlined, UserOutlined, CameraOutlined, EditOutlined, UploadOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
 import { createDiploma, getDiplomaById, updateDiploma, downloadDiplomaFile } from "../api/diplomas";
 import "../styles/pages.css";
 
-const { Dragger } = Upload;
 const { Title, Text } = Typography;
 
 export function DiplomaCreatePage() {

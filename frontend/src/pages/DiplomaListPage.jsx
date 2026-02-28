@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, Table, Tag, Button, Space, Input, Modal, Typography, Row, Col, Statistic, Tooltip, Avatar, Spin, message } from "antd";
+import { Card, Table, Tag, Button, Space, Input, Typography, Row, Col, Statistic, Tooltip, Spin, message } from "antd";
 import {
     FileTextOutlined,
     SearchOutlined,
@@ -8,9 +8,9 @@ import {
     ClockCircleOutlined,
     CloseCircleOutlined,
     ExclamationCircleOutlined,
-    UserOutlined,
     ReloadOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import { listDiplomas } from "../api/diplomas";
 import "../styles/pages.css";
 
@@ -28,6 +28,7 @@ export function DiplomaListPage() {
     const [searchText, setSearchText] = useState("");
     const [diplomas, setDiplomas] = useState([]);
     const [loading, setLoading] = useState(false);
+    const navigate = useNavigate();
 
     const fetchDiplomas = async (q = "") => {
         setLoading(true);
@@ -153,7 +154,7 @@ export function DiplomaListPage() {
                     <Button
                         type="text"
                         icon={<EyeOutlined />}
-                        href={`/diplomas/${record.id}`}
+                        onClick={() => navigate(`/diplomas/${record.id}`)}
                     />
                 </Tooltip>
             ),

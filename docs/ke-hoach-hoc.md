@@ -1,298 +1,607 @@
-# KẾ HOẠCH NẮM BẮT TOÀN BỘ KHÓA LUẬN
+# 📚 KẾ HOẠCH HỌC TẬP — Hiểu tường tận Khóa Luận
 
-> **Mục tiêu**: Hiểu sâu từng lớp (layer) của hệ thống để **tự tin bảo vệ khóa luận**, trả lời được mọi câu hỏi của hội đồng.
-
-> **Cách dùng**: Đọc từ trên xuống, hoàn thành mỗi giai đoạn trước khi sang giai đoạn sau. Mỗi giai đoạn có **checklist** và **câu hỏi kiểm tra** — tự trả lời được hết thì mới qua bước tiếp.
-
----
-
-## Giai đoạn 1: Hiểu Cơ sở dữ liệu (Database)
-
-**Thời gian**: ~1–2 ngày  
-**File cần đọc**: `backend/schema.sql`
-
-### Cần nắm
-- [ ] Hệ thống có **5 bảng**: `users`, `diplomas`, `diploma_files`, `approval_logs`, `chain_logs`
-- [ ] Bảng `users` lưu 4 role: `ADMIN`, `STAFF`, `MANAGER`, `ISSUER` — mỗi role làm được gì
-- [ ] Bảng `diplomas` có **vòng đời trạng thái**: `PENDING → APPROVED → ISSUED → REVOKED` (và nhánh `REJECTED`)
-- [ ] Bảng `diploma_files` lưu file dạng **BYTEA** (binary) trực tiếp trong DB, có 3 loại: `PORTRAIT`, `DIPLOMA`, `TRANSCRIPT`
-- [ ] Bảng `approval_logs` là **append-only** — chỉ thêm, không sửa/xóa — để ghi lại ai duyệt/từ chối
-- [ ] Bảng `chain_logs` cũng **append-only** — ghi lại mỗi lần ghi lên blockchain (`ISSUE` / `REVOKE`), kèm `tx_id` và `record_hash`
-- [ ] Trigger `set_updated_at()` tự động cập nhật `updated_at` khi UPDATE bảng `diplomas`
-- [ ] Ràng buộc CHECK: `record_hash` phải đúng 64 ký tự hex (`^[0-9a-f]{64}$`)
-
-### Câu hỏi tự kiểm tra
-1. Tại sao `approval_logs` và `chain_logs` thiết kế append-only? (Gợi ý: tính minh bạch, audit trail)
-2. Tại sao lưu file dạng BYTEA thay vì lưu đường dẫn file trên ổ đĩa? (Gợi ý: đơn giản, tính toàn vẹn, backup dễ)
-3. Trường `record_hash` trong `chain_logs` để làm gì? Nó tính từ đâu?
-4. Vẽ lại sơ đồ quan hệ giữa 5 bảng từ trí nhớ (không nhìn code).
+> **Hệ thống Quản lý và Xác thực Văn bằng số tích hợp Hyperledger Fabric**
+>
+> Mục tiêu: đọc xong tài liệu này, bạn sẽ giải thích được **mọi dòng code** trong dự án — từ SQL đến blockchain.
 
 ---
 
-## Giai đoạn 2: Hiểu Backend — Xác thực & Phân quyền
+## 🗺️ Lộ trình tổng quan (6 giai đoạn)
 
-**Thời gian**: ~1 ngày  
-**File cần đọc**: `backend/routes/auth.js`, `backend/middlewares/auth.js`, `backend/middlewares/role.js`, `backend/src/sessionStore.js`
+```mermaid
+graph LR
+    A[1. Nền tảng SQL] --> B[2. Backend API]
+    B --> C[3. Auth & Phân quyền]
+    C --> D[4. Blockchain Fabric]
+    D --> E[5. Frontend React]
+    E --> F[6. Tích hợp & Vận hành]
+```
 
-### Cần nắm
-- [ ] Đăng nhập bằng `username` + `password`, dùng **bcrypt** để so sánh hash
-- [ ] Sau khi đăng nhập, server tạo **session token** (UUID random) lưu trong bộ nhớ (`sessionStore`)
-- [ ] Mỗi request gửi token qua header `Authorization: Bearer <token>`
-- [ ] Middleware `requireAuth` kiểm tra token → gắn `req.user = { id, role, username }`
-- [ ] Middleware `requireRole("STAFF", "MANAGER",...)` kiểm tra `req.user.role` có trong danh sách cho phép không
-- [ ] Token có thời hạn (TTL) — hết hạn thì phải đăng nhập lại
-
-### Câu hỏi tự kiểm tra
-1. Tại sao dùng session-based auth thay vì JWT? (Gợi ý: đơn giản hơn cho dự án này)
-2. Nếu server restart, điều gì xảy ra với các session đang hoạt động?
-3. `requireRole("MANAGER")` đặt trước hay sau `requireAuth`? Tại sao thứ tự quan trọng?
-
----
-
-## Giai đoạn 3: Hiểu Backend — Luồng nghiệp vụ chính
-
-**Thời gian**: ~2–3 ngày  
-**File cần đọc**: `backend/routes/diplomas.js` (file lớn nhất, ~690 dòng), `docs/sequence-flows.md`
-
-### Luồng 1: Tạo hồ sơ (STAFF)
-- [ ] `POST /api/diplomas` — multipart form với 7 trường text + 3 file (portrait, diploma, transcript)
-- [ ] Dùng **multer** để xử lý file upload (lưu trong memory buffer)
-- [ ] Dùng **transaction** (`BEGIN` → `INSERT diplomas` → `INSERT diploma_files` x3 → `COMMIT`)
-- [ ] Nếu `serial_no` trùng → lỗi 409 Conflict
-
-### Luồng 2: Duyệt/Từ chối (MANAGER)
-- [ ] `POST /api/diplomas/:id/approve` — chỉ duyệt được hồ sơ `PENDING`
-- [ ] `POST /api/diplomas/:id/reject` — từ chối kèm lý do (`note`)
-- [ ] Cả hai đều dùng `SELECT ... FOR UPDATE` → tránh race condition
-- [ ] Ghi log vào `approval_logs`
-
-### Luồng 3: Phát hành lên blockchain (ISSUER)
-- [ ] `POST /api/diplomas/:id/issue` — **phần quan trọng nhất**
-- [ ] Bắt buộc upload file `wallet.json` chứa `mspId`, `certificate`, `privateKey`
-- [ ] Tính `recordHash` từ dữ liệu diploma + SHA-256 của 3 file → tạo canonical text → hash
-- [ ] Gọi chaincode `IssueDiploma(serialNo, jsonRecordString)` qua gRPC
-- [ ] Lưu `tx_id` và `record_hash` vào `chain_logs`
-
-### Luồng 4: Thu hồi (ISSUER)
-- [ ] `POST /api/diplomas/:id/revoke` — tương tự issue nhưng gọi `RevokeDiploma`
-- [ ] Đọc on-chain trước (`chainRead`) để lấy `recordHash` cũ, rồi ghi log
-
-### Luồng 5: Gửi lại hồ sơ bị từ chối (STAFF)
-- [ ] `POST /api/diplomas/:id/resubmit` — chuyển `REJECTED → PENDING`
-- [ ] Xóa `rejected_reason`, `rejected_role`, `rejected_at`
-
-### Câu hỏi tự kiểm tra
-1. Tại sao cần `SELECT ... FOR UPDATE` khi duyệt hồ sơ?
-2. Giải thích toàn bộ quy trình từ lúc STAFF tạo hồ sơ đến lúc ISSUER phát hành lên blockchain — có bao nhiêu bước?
-3. Nếu chaincode trả lỗi `ALREADY_EXISTS` thì phía backend xử lý thế nào?
-4. Tại sao ISSUER cần upload wallet thay vì server tự lưu sẵn private key? (Gợi ý: bảo mật, trách nhiệm cá nhân)
+| # | Giai đoạn | Thời gian | File chính cần đọc |
+|---|-----------|-----------|---------------------|
+| 1 | PostgreSQL & Schema | 2–3 ngày | `backend/schema.sql` |
+| 2 | Backend Express API | 3–4 ngày | `backend/src/`, `backend/routes/` |
+| 3 | Auth, Session, Role | 1–2 ngày | `middlewares/auth.js`, `middlewares/role.js` |
+| 4 | Hyperledger Fabric | 4–5 ngày | `chaincode/`, `backend/services/fabric*.js` |
+| 5 | Frontend React | 3–4 ngày | `frontend/src/` |
+| 6 | Tích hợp toàn bộ | 2–3 ngày | `docs/sequence-flows.md`, chạy E2E |
 
 ---
 
-## Giai đoạn 4: Hiểu cơ chế Hashing & Xác thực toàn vẹn
+## Giai đoạn 1 — PostgreSQL & Database Schema
 
-**Thời gian**: ~1 ngày  
-**File cần đọc**: `backend/services/recordHash.js`
+### 🎯 Mục tiêu
+Hiểu cách dữ liệu off-chain được lưu trữ, quan hệ giữa các bảng, và tại sao chọn PostgreSQL.
 
-### Cần nắm
-- [ ] `recordHash` = SHA-256 của **canonical text** (chuỗi chuẩn hóa)
-- [ ] Canonical text gồm 11 trường theo thứ tự cố định:
-  ```
-  serialNo=...
-  studentId=...
-  studentName=...
-  birthDate=YYYY-MM-DD
-  major=...
-  ranking=...
-  gpa=X.XX
-  graduationYear=YYYY
-  portraitSha256=<64 hex>
-  diplomaSha256=<64 hex>
-  transcriptSha256=<64 hex>
-  ```
-- [ ] Mỗi trường được **chuẩn hóa** (normalize): trim, collapse whitespace, NFC unicode, ngày chuẩn YYYY-MM-DD, GPA 2 chữ số thập phân
-- [ ] File ảnh/PDF cũng được hash SHA-256 riêng → đưa vào canonical text
-- [ ] Kết quả cuối: `recordHash` = `sha256(toàn_bộ_canonical_text)` — 64 ký tự hex
+### 📖 Kiến thức nền cần học
 
-### Tại sao quan trọng?
-`recordHash` là **cầu nối giữa off-chain (database) và on-chain (blockchain)**. Khi xác thực:
-- Tính lại `recordHash` từ dữ liệu trong DB → gọi là `computedRecordHash`
-- Đọc `recordHash` từ blockchain → gọi là `onchain.recordHash`
-- **Nếu hai hash khớp nhau** → dữ liệu chưa bị sửa đổi ✅
+| Chủ đề | Học gì | Tài liệu gợi ý |
+|--------|--------|-----------------|
+| SQL cơ bản | `CREATE TABLE`, `INSERT`, `SELECT`, `UPDATE`, `JOIN` | [PostgreSQL Tutorial](https://www.postgresqltutorial.com/) |
+| Kiểu dữ liệu | `BIGSERIAL`, `TEXT`, `DATE`, `INT`, `TIMESTAMPTZ`, `BYTEA` | [PG Data Types](https://www.postgresql.org/docs/current/datatype.html) |
+| Constraints | `PRIMARY KEY`, `UNIQUE`, `CHECK`, `REFERENCES`, `NOT NULL` | [PG Constraints](https://www.postgresql.org/docs/current/ddl-constraints.html) |
+| Index | `CREATE INDEX`, khi nào dùng, ảnh hưởng performance | [PG Indexes](https://www.postgresql.org/docs/current/indexes.html) |
+| Trigger & Function | `CREATE FUNCTION`, `CREATE TRIGGER`, `BEFORE UPDATE` | [PG Triggers](https://www.postgresql.org/docs/current/trigger-definition.html) |
+| Foreign Key | `REFERENCES`, `ON DELETE CASCADE` | (chung với Constraints) |
 
-### Câu hỏi tự kiểm tra
-1. Nếu ai đó sửa tên sinh viên trong database, `computedRecordHash` có thay đổi không? Kết quả xác thực sẽ ra sao?
-2. Tại sao cần chuẩn hóa (normalize) trước khi hash? Chuyện gì xảy ra nếu không chuẩn hóa?
-3. Tại sao hash cả 3 file (ảnh, bằng, bảng điểm) vào recordHash?
+### 🔬 Đọc code — `backend/schema.sql`
 
----
+Đọc **từ trên xuống**, ghi chú cho mỗi bảng:
 
-## Giai đoạn 5: Hiểu Blockchain — Chaincode
+#### Bảng `users` (dòng 8–14)
+```sql
+CREATE TABLE users (
+  id            BIGSERIAL PRIMARY KEY,      -- tự tăng, kiểu int8
+  username      TEXT NOT NULL UNIQUE,        -- đăng nhập, không trùng
+  password_hash TEXT NOT NULL,               -- bcrypt hash, KHÔNG lưu plain text
+  role          TEXT NOT NULL CHECK (role IN ('ADMIN','STAFF','MANAGER','ISSUER')),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+```
+**Câu hỏi tự kiểm tra:**
+1. Tại sao dùng `BIGSERIAL` chứ không phải `SERIAL`?
+2. `CHECK (role IN (...))` làm gì? Nếu INSERT role = `'GUEST'` thì sao?
+3. `TIMESTAMPTZ` khác `TIMESTAMP` ở điểm nào?
 
-**Thời gian**: ~1–2 ngày  
-**File cần đọc**: `chaincode/vanbang-chaincode/lib/vanbangContract.js`
+#### Bảng `diplomas` (dòng 17–47)
+- **Trạng thái máy :** `PENDING → APPROVED → ISSUED` (hoặc `REJECTED` / `REVOKED`)
+- 4 trường foreign key: `created_by`, `approved_by`, `issued_by`, `revoked_by` → trỏ về `users(id)`
+- `CHECK (status IN (...))` — ràng buộc cấp DB, không cần validate ở app
 
-### Cần nắm
-- [ ] Chaincode chạy trên **Hyperledger Fabric** — mạng blockchain doanh nghiệp (permissioned)
-- [ ] Contract có **3 function chính**:
-  - `IssueDiploma(serialNo, jsonRecordString)` — ghi mới, kiểm tra chống trùng
-  - `RevokeDiploma(serialNo, revokedAt)` — đổi status ISSUED → REVOKED
-  - `QueryDiploma(serialNo)` / `ReadDiploma(serialNo)` — đọc dữ liệu on-chain
-- [ ] Dữ liệu on-chain bao gồm: toàn bộ thông tin sinh viên + `recordHash` + `status` + `txId`
-- [ ] `ctx.stub.getState(serialNo)` — đọc state từ ledger theo key
-- [ ] `ctx.stub.putState(serialNo, ...)` — ghi state vào ledger
-- [ ] `ctx.stub.getTxID()` — lấy transaction ID tự động sinh bởi Fabric
-- [ ] Validate: kiểm tra `recordHash` phải là 64 ký tự hex, kiểm tra các trường bắt buộc
+**Câu hỏi tự kiểm tra:**
+1. Vẽ sơ đồ trạng thái (state diagram) của diploma
+2. Khi `UPDATE diplomas`, `updated_at` tự thay đổi — cơ chế nào? (xem trigger `trg_diplomas_updated_at`)
+3. Tại sao cần INDEX trên `student_id` và `lower(student_name)`?
 
-### Câu hỏi tự kiểm tra
-1. Dữ liệu đã ghi lên blockchain có thể xóa/sửa được không? Tại sao?
-2. `serialNo` đóng vai trò gì trong ledger? (Gợi ý: key của world state)
-3. Tại sao chaincode kiểm tra `ALREADY_EXISTS` trước khi issue?
-4. Sự khác biệt giữa `submit` (ghi) và `evaluate` (đọc) khi gọi chaincode?
+#### Bảng `diploma_files` (dòng 67–80)
+```sql
+UNIQUE (diploma_id, kind)  -- mỗi diploma chỉ có 1 file cho mỗi loại
+```
+- 3 loại file: `PORTRAIT`, `DIPLOMA`, `TRANSCRIPT`
+- Lưu trực tiếp `BYTEA` trong DB (không dùng filesystem)
+- `sha256` — dùng để tính `recordHash` sau này
 
----
+**Câu hỏi tự kiểm tra:**
+1. Tại sao lưu file dạng `BYTEA` thay vì lưu path?
+2. Constraint `UNIQUE (diploma_id, kind)` ngăn chặn gì?
 
-## Giai đoạn 6: Hiểu cách Backend kết nối Blockchain
+#### Bảng `approval_logs` và `chain_logs` (dòng 85–111)
+- **Append-only** — chỉ INSERT, không UPDATE/DELETE → audit trail
+- `approval_logs`: ghi lại ai APPROVE/REJECT
+- `chain_logs`: ghi lại tx blockchain (ISSUE/REVOKE)
+- `chain_logs.record_hash` có CHECK regex `'^[0-9a-f]{64}$'` — đảm bảo là SHA-256 hex
 
-**Thời gian**: ~1 ngày  
-**File cần đọc**: `backend/services/fabricClient.js`, `backend/services/fabricDiploma.js`
+**Câu hỏi tự kiểm tra:**
+1. Tại sao thiết kế bảng log riêng thay vì ghi trực tiếp vào `diplomas`?
+2. `tx_id UNIQUE` đảm bảo điều gì?
 
-### Cần nắm
-- [ ] Backend kết nối Fabric peer qua **gRPC + TLS**
-- [ ] Dùng **Fabric Gateway SDK** (`@hyperledger/fabric-gateway`) — SDK chính thức
-- [ ] `getGateway()` — tạo kết nối bằng cert + private key của admin (cấu hình sẵn trong `.env`)
-- [ ] `connectWithWallet(mspId, cert, key)` — tạo kết nối tạm bằng wallet upload từ người dùng
-- [ ] `chainIssueWithWallet()` — gọi `contract.submit("IssueDiploma", ...)` → ghi lên blockchain
-- [ ] `chainRead()` — gọi `contract.evaluate("QueryDiploma", ...)` → chỉ đọc, không ghi
-
-### Câu hỏi tự kiểm tra
-1. Tại sao cần TLS khi kết nối peer? (Gợi ý: mã hóa, xác thực server)
-2. `submit` vs `evaluate` khác nhau thế nào? Cái nào tạo transaction mới?
-3. File `.env` cần những biến môi trường nào cho Fabric? Liệt kê ra.
+### ✅ Bài tập thực hành
+1. Import schema: `psql -U postgres -d qlvanbang -f backend/schema.sql`
+2. Viết query: lấy tất cả diploma PENDING kèm tên người tạo
+3. Viết query: đếm số diploma theo từng trạng thái
+4. Viết query: lấy chain_logs gần nhất của 1 diploma
 
 ---
 
-## Giai đoạn 7: Hiểu luồng Xác thực công khai (Public Verify)
+## Giai đoạn 2 — Backend Express API
 
-**Thời gian**: ~1 ngày  
-**File cần đọc**: `backend/routes/public.js`, `frontend/src/pages/VerifyPage.jsx`
+### 🎯 Mục tiêu
+Hiểu cách backend xử lý request, kết nối DB, và cấu trúc REST API.
 
-### Cần nắm
-- [ ] API `GET /api/public/verify?serialNo=...` — **không cần đăng nhập**
-- [ ] Quy trình xác thực:
-  1. Tìm diploma trong DB theo `serial_no`
-  2. Tính `computedRecordHash` từ dữ liệu off-chain (DB + file)
-  3. Đọc `recordHash` từ blockchain (`chainRead`)
-  4. So sánh: `match = (computedRecordHash === onchain.recordHash)`
-- [ ] Trả về: hash tính được, dữ liệu on-chain, trạng thái off-chain, kết quả match
-- [ ] API `GET /api/public/search` — tìm kiếm theo serialNo, studentId, studentName (chỉ hiện ISSUED/REVOKED)
-- [ ] Frontend `VerifyPage.jsx` hiển thị kết quả so sánh trực quan cho người dùng
+### 📖 Kiến thức nền cần học
 
-### Câu hỏi tự kiểm tra
-1. Nếu `match = false` thì có những nguyên nhân nào? Liệt kê ít nhất 3 trường hợp.
-2. Tại sao API verify không cần đăng nhập? (Gợi ý: mục đích công khai, ai cũng có thể kiểm tra)
-3. Giải thích bằng lời cho người không biết IT: "Hệ thống xác thực văn bằng hoạt động như thế nào?"
+| Chủ đề | Học gì | Tài liệu gợi ý |
+|--------|--------|-----------------|
+| Node.js cơ bản | Event loop, modules ESM (`import/export`) | [Node.js Docs](https://nodejs.org/docs/latest/api/) |
+| Express.js | Middleware, routing, error handling | [Express Guide](https://expressjs.com/en/guide/routing.html) |
+| `pg` (node-postgres) | Pool, `pool.query()`, parameterized query | [node-postgres](https://node-postgres.com/) |
+| REST API | HTTP methods, status codes, JSON response | [MDN HTTP](https://developer.mozilla.org/en-US/docs/Web/HTTP) |
+| `multer` | Upload file multipart/form-data | [Multer docs](https://github.com/expressjs/multer) |
+| `dotenv` | Biến môi trường `.env` | [dotenv](https://github.com/motdotla/dotenv) |
+| ES Modules | `import`, `export`, `.js` extension trong Node | [Node ESM](https://nodejs.org/api/esm.html) |
+
+### 🔬 Đọc code — theo thứ tự
+
+#### Bước 1: Entry point — `backend/src/server.js`
+- Khởi động Express trên port nào?
+- Import app từ đâu?
+
+#### Bước 2: App setup — `backend/src/app.js`
+```
+cors()          → cho phép frontend gọi cross-origin
+express.json()  → parse JSON body
+app.use("/api/auth", authRouter)   → mount route
+```
+**Hiểu:** mỗi `app.use("/api/xxx", router)` = nhóm endpoint theo chức năng
+
+#### Bước 3: Database pool — `backend/src/db.js`
+```javascript
+import pg from 'pg';
+const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+```
+**Hiểu:** Pool giữ nhiều connection sẵn, dùng lại thay vì mở/đóng liên tục
+
+#### Bước 4: Session — `backend/src/sessionStore.js`
+- Token lưu trong `Map` (in-memory)
+- `SESSION_TTL_MINUTES` — token hết hạn sau bao lâu
+- **Hệ quả:** restart backend → mất hết session → user phải login lại
+
+#### Bước 5: Routes — đọc từng file
+
+| File | Chức năng | Endpoint chính |
+|------|-----------|----------------|
+| `routes/auth.js` | Đăng nhập/đăng xuất | `POST /login`, `GET /me`, `PUT /change-password` |
+| `routes/users.js` | Quản lý user (ADMIN) | `GET /`, `POST /` |
+| `routes/diplomas.js` | **CRUD + workflow** | Tạo, sửa, duyệt, phát hành, thu hồi |
+| `routes/chain.js` | Đọc on-chain | `GET /diplomas/:serialNo` |
+| `routes/public.js` | Tra cứu công khai | `GET /search`, `GET /verify` |
+| `routes/issuer.js` | Tạo wallet Fabric CA | `POST /wallet` |
+
+**Cách đọc mỗi route:**
+1. Xem middleware: `requireAuth`, `requireRole('...')`
+2. Xem logic: query DB gì? trả response gì?
+3. Xem error handling: trả status code nào?
+
+### 🔬 Deep dive: `routes/diplomas.js` (file quan trọng nhất)
+
+Đây là file lớn nhất, chứa toàn bộ luồng nghiệp vụ. Đọc theo thứ tự:
+
+1. **`POST /`** — Staff tạo hồ sơ mới (multipart upload 3 file + data)
+2. **`GET /`** — Liệt kê diplomas (phân trang, filter theo role)
+3. **`GET /:id`** — Chi tiết 1 diploma + join chain_logs
+4. **`POST /:id/approve`** — Manager duyệt → status = APPROVED
+5. **`POST /:id/reject`** — Manager từ chối → status = REJECTED
+6. **`POST /:id/resubmit`** — Staff gửi lại sau khi bị reject
+7. **`POST /:id/issue`** — Issuer phát hành lên blockchain
+8. **`POST /:id/revoke`** — Issuer thu hồi trên blockchain
+
+**Câu hỏi tự kiểm tra:**
+1. Endpoint `POST /issue` làm những gì? (gợi ý: tính hash → gọi chaincode → ghi DB)
+2. Tại sao cần `multer` ở endpoint tạo diploma?
+3. Endpoint nào KHÔNG cần authentication?
+
+### ✅ Bài tập thực hành
+1. Chạy `npm run dev` và test `GET /api/health`
+2. Dùng `curl` hoặc Postman gọi `POST /api/auth/login`
+3. Trace request: từ URL → route → middleware → handler → DB query → response
 
 ---
 
-## Giai đoạn 8: Hiểu Frontend
+## Giai đoạn 3 — Authentication & Phân quyền
 
-**Thời gian**: ~2 ngày  
-**File cần đọc**: `frontend/src/router/index.jsx`, `frontend/src/pages/*.jsx`
+### 🎯 Mục tiêu
+Hiểu hoàn toàn cơ chế auth token-based và RBAC (Role-Based Access Control).
 
-### Cần nắm
-- [ ] Dùng **React 19** + **Vite** + **Ant Design** (UI library) + **React Router v7**
-- [ ] 9 trang chính, mỗi trang phục vụ 1 chức năng:
+### 📖 Kiến thức nền cần học
 
-| Trang | Role | Chức năng |
-|---|---|---|
-| `LoginPage` | Tất cả | Đăng nhập |
-| `StaffDashboardPage` | STAFF | Dashboard tổng quan |
-| `DiplomaCreatePage` | STAFF | Tạo/Sửa hồ sơ + upload file |
-| `DiplomaListPage` | Internal | Danh sách hồ sơ + tìm kiếm |
-| `DiplomaDetailPage` | Internal | Chi tiết hồ sơ + logs |
-| `ApprovalPage` | MANAGER | Duyệt/Từ chối hồ sơ |
-| `IssuancePage` | ISSUER | Phát hành/Thu hồi + upload wallet |
+| Chủ đề | Học gì |
+|--------|--------|
+| Hashing mật khẩu | bcrypt, salt, work factor |
+| Token auth | Bearer token, header `Authorization` |
+| RBAC | Role-based access, middleware pattern |
+| Middleware Express | `next()`, thứ tự thực thi |
+
+### 🔬 Đọc code
+
+#### `middlewares/auth.js` — `requireAuth`
+Luồng xử lý:
+```
+Request → Lấy header Authorization → Tách "Bearer <token>"
+→ Tìm token trong sessionStore → Kiểm tra hết hạn
+→ Gắn req.user = { id, username, role } → next()
+```
+
+#### `middlewares/role.js` — `requireRole(...roles)`
+```javascript
+// Higher-order function: nhận roles, trả về middleware
+export function requireRole(...roles) {
+    return (req, res, next) => {
+        if (!roles.includes(req.user.role)) return res.status(403)...
+        next();
+    };
+}
+```
+**Dùng như:** `router.post('/approve', requireAuth, requireRole('MANAGER'), handler)`
+
+#### Luồng login trong `routes/auth.js`:
+```
+1. Nhận username + password
+2. Query DB lấy user
+3. bcrypt.compare(password, password_hash)
+4. Tạo random token (crypto.randomUUID)
+5. Lưu vào sessionStore Map
+6. Trả token cho client
+```
+
+**Câu hỏi tự kiểm tra:**
+1. Tại sao không dùng JWT mà dùng session token in-memory?
+2. Nhược điểm của session in-memory là gì? (gợi ý: restart, scale)
+3. Middleware chạy theo thứ tự nào? `requireAuth` trước hay `requireRole` trước?
+4. Ma trận: role nào được gọi endpoint nào?
+
+### 📊 Ma trận phân quyền
+
+| Endpoint | ADMIN | STAFF | MANAGER | ISSUER | Public |
+|----------|:-----:|:-----:|:-------:|:------:|:------:|
+| `POST /diplomas` | ❌ | ✅ | ❌ | ❌ | ❌ |
+| `POST /approve` | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `POST /issue` | ❌ | ❌ | ❌ | ✅ | ❌ |
+| `GET /users` | ✅ | ❌ | ❌ | ❌ | ❌ |
+| `GET /verify` | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+---
+
+## Giai đoạn 4 — Hyperledger Fabric & Blockchain
+
+### 🎯 Mục tiêu
+Hiểu tại sao cần blockchain, Fabric hoạt động thế nào, và chaincode của dự án làm gì.
+
+### 📖 Kiến thức nền cần học
+
+> [!IMPORTANT]
+> Đây là phần phức tạp nhất. Dành nhiều thời gian cho lý thuyết trước khi đọc code.
+
+| Chủ đề | Học gì | Tài liệu gợi ý |
+|--------|--------|-----------------|
+| Blockchain cơ bản | Ledger, block, transaction, consensus | [Hyperledger Fabric Docs](https://hyperledger-fabric.readthedocs.io/en/latest/whatis.html) |
+| Permissioned vs Public | Fabric (private) vs Ethereum (public) | [Key Concepts](https://hyperledger-fabric.readthedocs.io/en/latest/key_concepts.html) |
+| Fabric Architecture | Peer, Orderer, CA, Channel, MSP | [Architecture](https://hyperledger-fabric.readthedocs.io/en/latest/arch-deep-dive.html) |
+| Chaincode (Smart Contract) | Contract class, ctx, stub, putState/getState | [Chaincode tutorial](https://hyperledger-fabric.readthedocs.io/en/latest/chaincode.html) |
+| Fabric Gateway SDK | `@hyperledger/fabric-gateway`, connect, submit | [Gateway SDK](https://hyperledger.github.io/fabric-gateway/) |
+| Fabric CA | Certificate Authority, enrollment, registration | [CA Guide](https://hyperledger-fabric-ca.readthedocs.io/) |
+| gRPC | Protocol giữa client ↔ peer | (đọc tổng quan) |
+| PKI & X.509 | TLS cert, private key, MSP identity | [MSP](https://hyperledger-fabric.readthedocs.io/en/latest/msp.html) |
+
+### 🏗️ Kiến trúc Fabric trong dự án
+
+```mermaid
+graph TB
+    subgraph "Fabric Network (Docker)"
+        CA[Fabric CA :7054]
+        O[Orderer :7050]
+        P1[Peer Org1 :7051]
+        P2[Peer Org2 :9051]
+        CC[Chaincode vanbang]
+        P1 --- CC
+    end
+
+    subgraph "Backend Node.js"
+        FC[fabricClient.js]
+        FD[fabricDiploma.js]
+    end
+
+    FC -->|gRPC + TLS| P1
+    FC -->|Enroll| CA
+    FD -->|submitTransaction| CC
+```
+
+- **Channel:** `mychannel` — kênh giao tiếp chung
+- **Chaincode:** `vanbang` — smart contract xử lý văn bằng
+- **2 Org:** Org1, Org2 (mô phỏng 2 tổ chức)
+
+### 🔬 Đọc code Chaincode — `chaincode/vanbang-chaincode/lib/vanbangContract.js`
+
+#### Hàm `IssueDiploma(ctx, serialNo, jsonRecordString)`
+```
+1. Parse jsonRecordString thành object
+2. Kiểm tra serialNo chưa tồn tại trên ledger
+3. Validate đủ field: studentId, studentName, recordHash...
+4. Validate recordHash là hex 64 ký tự (SHA-256)
+5. Tạo object diploma với status = "ISSUED"
+6. ctx.stub.putState(serialNo, buffer) → ghi lên ledger
+7. Trả về object đã ghi
+```
+
+#### Hàm `RevokeDiploma(ctx, serialNo, revokedAt)`
+```
+1. Đọc diploma từ ledger (getState)
+2. Kiểm tra status phải là "ISSUED"
+3. Cập nhật status = "REVOKED", revokedAt
+4. putState lại lên ledger
+```
+
+#### Hàm `ReadDiploma(ctx, serialNo)` / `QueryDiploma`
+```
+1. getState(serialNo) từ ledger
+2. Parse JSON và trả về
+```
+
+**Câu hỏi tự kiểm tra:**
+1. `ctx.stub.putState()` — ghi dữ liệu vào đâu?
+2. Tại sao chaincode không cho UPDATE sau khi đã ISSUE, chỉ cho REVOKE?
+3. `recordHash` trên chain có gì khác so với dữ liệu DB?
+
+### 🔬 Đọc code Backend Fabric Service
+
+#### `backend/services/fabricClient.js`
+3 hàm chính:
+1. **`getGateway()`** — tạo gateway từ cert/key trong `.env` (server identity, cache)
+2. **`getContract()`** — lấy contract `vanbang` trên channel `mychannel`
+3. **`connectWithWallet(mspId, cert, key)`** — tạo gateway tạm từ wallet user upload
+
+**Quan trọng:** Hàm `connectWithWallet` dùng khi ISSUER upload wallet.json để issue/revoke — mỗi lần tạo gateway mới, dùng xong phải `close()`.
+
+#### `backend/services/fabricDiploma.js`
+- `issueDiploma(contract, serialNo, recordData)` → `contract.submitTransaction('IssueDiploma', ...)`
+- `readDiploma(contract, serialNo)` → `contract.evaluateTransaction('ReadDiploma', ...)`
+- `revokeDiploma(contract, serialNo, revokedAt)` → `contract.submitTransaction('RevokeDiploma', ...)`
+
+**Hiểu sự khác biệt:**
+- `submitTransaction` = ghi (tạo transaction mới, qua orderer, ghi block)
+- `evaluateTransaction` = đọc (chỉ query peer, không tạo transaction)
+
+#### `backend/services/recordHash.js` — Cốt lõi xác thực
+
+```mermaid
+graph LR
+    A[Diploma data] --> B[Normalize: tên, ngày, GPA...]
+    C[3 files] --> D[SHA-256 mỗi file]
+    B --> E[buildCanonicalText]
+    D --> E
+    E --> F[SHA-256 toàn bộ]
+    F --> G[recordHash 64 hex chars]
+```
+
+**Luồng tạo recordHash:**
+1. Lấy data diploma từ DB (tên, mã SV, ngành...)
+2. **Normalize:** trim, lowercase date, 2 decimal GPA — để đảm bảo tính **deterministic**
+3. Lấy 3 file (PORTRAIT, DIPLOMA, TRANSCRIPT) → SHA-256 mỗi file
+4. Ghép thành canonical text (cố định thứ tự field)
+5. SHA-256 cả canonical text → `recordHash`
+
+**Tại sao cần normalize?** Vì cùng 1 dữ liệu, nếu format khác nhau (thêm space, đổi format ngày) sẽ ra hash khác nhau → verify sai.
+
+#### Luồng xác thực công khai (`GET /api/public/verify`)
+```
+1. Nhận serialNo
+2. Tính recordHash từ DB (off-chain)
+3. Đọc on-chain qua ReadDiploma
+4. So sánh: recordHash off-chain == recordHash on-chain?
+5. Trả kết quả: match/mismatch + thông tin chi tiết
+```
+
+**Câu hỏi tự kiểm tra:**
+1. Nếu ai đó sửa dữ liệu trong DB (off-chain), verify sẽ ra kết quả gì?
+2. Tại sao phải hash cả 3 file, không chỉ dữ liệu text?
+3. Nếu recordHash không khớp, nguyên nhân có thể là gì?
+
+### 🔬 Đọc code Deploy Scripts
+
+#### `chaincode/DEPLOY.sh`
+```bash
+# 1. Install chaincode dependencies
+# 2. Tắt mạng cũ: network.sh down
+# 3. Dựng mạng mới + tạo channel: network.sh up createChannel -ca
+# 4. Deploy chaincode: network.sh deployCC ...
+```
+
+#### `chaincode/RESUME.sh`
+- Restart container sau reboot (không deploy lại)
+
+### ✅ Bài tập thực hành
+1. Chạy `bash DEPLOY.sh` — quan sát Docker containers
+2. Kiểm tra: `docker ps | grep peer`
+3. Đọc `.env` và map từng biến với cert path thực tế
+4. Gọi `GET /api/chain/diplomas/VB-001` sau khi issue 1 diploma
+
+---
+
+## Giai đoạn 5 — Frontend React
+
+### 🎯 Mục tiêu
+Hiểu SPA architecture, routing, quản lý state, và cách gọi API.
+
+### 📖 Kiến thức nền cần học
+
+| Chủ đề | Học gì | Tài liệu gợi ý |
+|--------|--------|-----------------|
+| React cơ bản | Component, JSX, props, state, hooks | [React Docs](https://react.dev/learn) |
+| React Hooks | `useState`, `useEffect`, `useCallback` | [Hooks](https://react.dev/reference/react/hooks) |
+| React Router v7 | `createBrowserRouter`, `<Outlet>`, `useNavigate`, `useParams` | [React Router](https://reactrouter.com/) |
+| Ant Design | `Table`, `Form`, `Button`, `Modal`, `message` | [Ant Design](https://ant.design) |
+| Axios | Instance, interceptor, base URL | [Axios](https://axios-http.com/) |
+| Vite | Dev server, proxy, build | [Vite](https://vite.dev/) |
+
+### 🔬 Đọc code — theo thứ tự
+
+#### 1. Entry: `main.jsx` → `router/index.jsx`
+- Render vào `#root`
+- Router: danh sách tất cả route → component tương ứng
+- `RequireAuth` bọc route cần đăng nhập
+
+#### 2. Layout: `layouts/MainLayout.jsx`
+- Sidebar menu (thay đổi theo role)
+- Header (hiện user, nút logout)
+- `<Outlet />` — render trang con
+
+#### 3. API layer: `api/api.js`
+```javascript
+const api = axios.create({ baseURL: '/api' });
+// Interceptor: tự gắn token + xử lý 401
+api.interceptors.request.use(config => {
+    config.headers.Authorization = `Bearer ${token}`;
+});
+api.interceptors.response.use(null, error => {
+    if (error.response.status === 401) → redirect /login
+});
+```
+- `api/diplomas.js` — wrapper gọi diploma endpoints
+- `api/public.js` — wrapper gọi public endpoints
+
+#### 4. Các trang chính
+
+| Page | Role | Chức năng |
+|------|------|-----------|
+| `LoginPage` | All | Đăng nhập |
+| `VerifyPage` | Public | Tra cứu & xác thực văn bằng |
+| `DiplomaListPage` | Auth | Danh sách tất cả diploma |
+| `DiplomaCreatePage` | STAFF | Form tạo hồ sơ mới (upload 3 file) |
+| `StaffDashboardPage` | STAFF | Hồ sơ mình đã tạo |
+| `ApprovalPage` | MANAGER | Duyệt/từ chối hồ sơ |
+| `IssuancePage` | ISSUER | Phát hành/thu hồi lên blockchain |
+| `DiplomaDetailPage` | Auth | Chi tiết + lịch sử phê duyệt + chain logs |
 | `AdminUsersPage` | ADMIN | Quản lý tài khoản |
-| `VerifyPage` | Công khai | Xác thực văn bằng |
 
-- [ ] Phân quyền trên frontend: `RequireAuth` component bảo vệ route
-- [ ] Gọi API qua **Axios** với interceptor gắn token tự động
-- [ ] Xử lý token hết hạn: interceptor bắt lỗi 401 → redirect về login
-
-### Câu hỏi tự kiểm tra
-1. Ở frontend, việc kiểm tra role có đủ bảo mật không? Tại sao vẫn cần kiểm tra ở backend?
-2. Liệt kê sự tương ứng giữa mỗi trang frontend và API backend mà nó gọi.
-
----
-
-## Giai đoạn 9: Hiểu Fabric Network & Deploy
-
-**Thời gian**: ~1 ngày  
-**File cần đọc**: `chaincode/DEPLOY.sh`, `chaincode/RESUME.sh`, `docs/network.md`
-
-### Cần nắm
-- [ ] Dùng **test-network** có sẵn của Fabric Samples (2 org, 2 peer, 1 orderer)
-- [ ] Deploy qua script `network.sh`: `down` → `up createChannel -ca` → `deployCC`
-- [ ] Flag `-ca` nghĩa là dùng **Fabric CA** (Certificate Authority) thay vì crypto tĩnh
-- [ ] Chaincode deploy bằng **standard lifecycle** (package → install → approve → commit)
-- [ ] `RESUME.sh` — khởi động lại container Docker sau khi reboot
-- [ ] Channel: `mychannel`, Chaincode name: `vanbang`
-
-### Câu hỏi tự kiểm tra
-1. Hyperledger Fabric khác Bitcoin/Ethereum ở điểm nào? (Gợi ý: permissioned vs permissionless)
-2. Trong test-network có bao nhiêu tổ chức (org)? Mỗi org có những thành phần gì?
-3. Certificate Authority (CA) trong Fabric làm nhiệm vụ gì?
-4. Tại sao cần channel? Channel giải quyết vấn đề gì?
-
----
-
-## Giai đoạn 10: Tổng hợp & Chuẩn bị bảo vệ
-
-**Thời gian**: ~1–2 ngày
-
-### Bài tập tổng hợp
-- [ ] **Vẽ sơ đồ kiến trúc tổng thể** (không nhìn code): Frontend ↔ Backend ↔ PostgreSQL ↔ Fabric
-- [ ] **Viết lại workflow phát hành** bằng lời: từ lúc STAFF nhập → MANAGER duyệt → ISSUER phát hành → ghi blockchain
-- [ ] **Demo thực hành**: Chạy toàn bộ hệ thống, tạo 1 hồ sơ, duyệt, phát hành, rồi xác thực trên trang public
-- [ ] **Trả lời 10 câu hỏi khó** (bên dưới)
-
-### 10 câu hỏi hội đồng có thể hỏi
-1. Tại sao chọn Hyperledger Fabric mà không dùng Ethereum?
-2. Dữ liệu nào lưu on-chain, dữ liệu nào lưu off-chain? Tại sao không lưu hết lên blockchain?
-3. `recordHash` tính như thế nào? Nếu sửa 1 ký tự trong tên sinh viên thì hash có thay đổi không?
-4. Hệ thống xác thực tính toàn vẹn ra sao? Giải thích cơ chế so sánh hash.
-5. Nếu database bị hack và sửa dữ liệu, hệ thống phát hiện được không?
-6. Wallet (certificate + private key) dùng để làm gì? Tại sao không lưu trên server?
-7. Giải thích luồng phát hành văn bằng từ đầu đến cuối.
-8. `SELECT ... FOR UPDATE` giải quyết vấn đề gì?
-9. Tại sao thiết kế 4 role riêng biệt thay vì 1 admin làm hết?
-10. Nếu có thêm thời gian, bạn sẽ cải thiện gì trong hệ thống?
-
----
-
-## Tóm tắt thứ tự học
-
+#### 5. Component: `RequireAuth.jsx`
 ```
-Giai đoạn 1: Database (schema.sql)          ← nền tảng dữ liệu
-    ↓
-Giai đoạn 2: Auth & Phân quyền              ← ai được làm gì
-    ↓
-Giai đoạn 3: Luồng nghiệp vụ (diplomas.js) ← hệ thống hoạt động ra sao
-    ↓
-Giai đoạn 4: Hashing (recordHash.js)        ← cầu nối off-chain ↔ on-chain
-    ↓
-Giai đoạn 5: Chaincode                      ← smart contract trên blockchain
-    ↓
-Giai đoạn 6: Backend ↔ Fabric               ← kết nối 2 thế giới
-    ↓
-Giai đoạn 7: Public Verify                  ← giá trị cốt lõi của đề tài
-    ↓
-Giai đoạn 8: Frontend                       ← giao diện người dùng
-    ↓
-Giai đoạn 9: Network & Deploy               ← hạ tầng blockchain
-    ↓
-Giai đoạn 10: Tổng hợp & Bảo vệ            ← sẵn sàng trình bày
+Kiểm tra token trong localStorage
+→ Có token: render <Outlet /> (trang con)
+→ Không token: redirect /login
 ```
 
-> **Ước tính tổng thời gian**: 12–16 ngày nếu học nghiêm túc 2–3 giờ/ngày.
+**Câu hỏi tự kiểm tra:**
+1. Khi user nhấn "Phát hành", flow đi như thế nào? (UI → API → Backend → Chaincode)
+2. `vite.config.js` proxy `/api` đến `localhost:3001` — tại sao cần?
+3. Interceptor 401 xử lý gì? Tại sao cần?
+4. Menu sidebar hiện khác nhau cho mỗi role — logic ở đâu?
+
+### ✅ Bài tập thực hành
+1. Chạy `npm run dev` frontend và mở browser
+2. Đăng nhập 4 tài khoản khác nhau, quan sát menu
+3. Tạo 1 diploma → duyệt → phát hành — trace cả frontend và backend log
+4. Mở `VerifyPage`, nhập serial number → xem kết quả verify
+
+---
+
+## Giai đoạn 6 — Tích hợp & Luồng End-to-End
+
+### 🎯 Mục tiêu
+Nắm toàn bộ luồng nghiệp vụ từ đầu đến cuối, kết nối mọi kiến thức lại.
+
+### 📖 Tham khảo
+- Đọc kỹ: [sequence-flows.md](file:///home/hoang/khoa-luan/docs/sequence-flows.md)
+- Đọc kỹ: [runbook.md](file:///home/hoang/khoa-luan/docs/runbook.md)
+
+### 🔬 Trace 4 luồng chính End-to-End
+
+#### Luồng 1: Tạo hồ sơ (STAFF)
+```
+StaffUI → DiplomaCreatePage → api.post('/diplomas', formData)
+→ Express: multer parse files → INSERT diplomas, UPSERT diploma_files
+→ Response 201 → UI hiện "Thành công"
+```
+
+#### Luồng 2: Duyệt hồ sơ (MANAGER)
+```
+ManagerUI → ApprovalPage → api.post('/diplomas/:id/approve')
+→ Express: requireRole('MANAGER') → UPDATE status='APPROVED'
+→ INSERT approval_logs → Response 200
+```
+
+#### Luồng 3: Phát hành lên blockchain (ISSUER)
+```
+IssuerUI → IssuancePage → upload wallet.json
+→ api.post('/diplomas/:id/issue', walletFile)
+→ Express: parse wallet → connectWithWallet(mspId, cert, key)
+→ computeRecordHash(diplomaId) → tính canonical text + SHA-256
+→ fabricDiploma.issueDiploma(contract, serialNo, recordData)
+→ Chaincode: IssueDiploma → putState → txId
+→ UPDATE diplomas SET status='ISSUED'
+→ INSERT chain_logs(ISSUE, txId, recordHash)
+→ close() gateway → Response 200
+```
+
+#### Luồng 4: Xác thực công khai
+```
+Anyone → VerifyPage → api.get('/public/verify?serialNo=...')
+→ Backend: tính recordHash off-chain
+→ ReadDiploma on-chain → so sánh hash
+→ Trả kết quả: offchain data + onchain data + match status
+```
+
+### 📊 Tổng hợp technology stack
+
+```mermaid
+graph TB
+    subgraph "Frontend (Browser)"
+        R[React 19 + Vite 7]
+        AD[Ant Design 6]
+        RR[React Router 7]
+        AX[Axios]
+    end
+
+    subgraph "Backend (Node.js)"
+        EX[Express 5]
+        PG[pg — PostgreSQL driver]
+        BC[bcrypt]
+        MU[multer]
+        FG["@hyperledger/fabric-gateway"]
+    end
+
+    subgraph "Database"
+        DB[(PostgreSQL)]
+    end
+
+    subgraph "Blockchain (Docker)"
+        HF[Hyperledger Fabric 2.5]
+        CC[Chaincode JS]
+        CA[Fabric CA]
+    end
+
+    R --> AX
+    AX -->|REST API| EX
+    EX --> PG --> DB
+    EX --> FG -->|gRPC| HF
+    HF --> CC
+    CA --> HF
+```
+
+### ✅ Bài tập tổng hợp cuối cùng
+1. **Demo toàn bộ:** Tạo → Duyệt → Phát hành → Xác thực → Thu hồi
+2. **Phá test:** Sửa 1 record trong DB, verify lại — hash có khớp không?
+3. **Giải thích:** Viết 1 trang A4 giải thích tổng quan hệ thống cho người không biết IT
+4. **Trả lời:** "Blockchain giải quyết vấn đề gì mà riêng PostgreSQL không làm được?"
+
+---
+
+## 📝 Các câu hỏi phỏng vấn / bảo vệ khóa luận
+
+### Câu hỏi lý thuyết
+1. Tại sao chọn Hyperledger Fabric mà không phải Ethereum?
+2. Giải thích cơ chế xác thực tính toàn vẹn của văn bằng?
+3. Permissioned blockchain khác public blockchain ở điểm nào?
+4. `recordHash` được tạo như thế nào? Tại sao cần normalize dữ liệu?
+5. Nếu server bị hack, dữ liệu on-chain có bị ảnh hưởng không?
+
+### Câu hỏi kỹ thuật
+6. Giải thích luồng phát hành văn bằng từ đầu đến cuối?
+7. `submitTransaction` vs `evaluateTransaction` khác nhau gì?
+8. Tại sao session lưu in-memory? Nhược điểm là gì?
+9. Trigger `set_updated_at()` hoạt động thế nào?
+10. Tại sao bảng `chain_logs` là append-only?
+
+### Câu hỏi mở rộng
+11. Nếu muốn thêm role mới (ví dụ: VIEWER), cần sửa ở đâu?
+12. Nếu muốn scale lên nhiều backend server, cần thay đổi gì?
+13. Làm sao thêm tính năng fulltext search tiếng Việt cho diploma?
+
+---
+
+## 📌 Mẹo học hiệu quả
+
+> [!TIP]
+> 1. **Đọc code với `console.log`**: thêm log vào function, chạy thử, xem output
+> 2. **Trace request**: từ browser DevTools → Network tab → xem request/response
+> 3. **Không cần nhớ hết**: hiểu flow và biết tìm ở đâu quan trọng hơn
+> 4. **Vẽ sơ đồ**: mỗi khi đọc xong 1 phần, vẽ lại bằng tay — giúp nhớ lâu
+> 5. **Đặt câu hỏi "Tại sao?"**: mỗi dòng code, hỏi "tại sao viết thế này?"

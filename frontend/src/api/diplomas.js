@@ -76,11 +76,6 @@ export async function getChainLogs(id) {
     return res.data;
 }
 
-export async function verifyDiploma(params) {
-    const res = await api.get("/public/verify", { params });
-    return res.data;
-}
-
 export async function rejectIssueDiploma(id, reason) {
     const res = await api.post(`/diplomas/${id}/reject-issue`, { reason });
     return res.data;

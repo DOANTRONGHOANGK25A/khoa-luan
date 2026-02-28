@@ -8,7 +8,7 @@ import diplomasRouter from "../routes/diplomas.js";
 const app = express();
 
 
-app.use(cors());               // cơ bản nhất, chạy dev ok
+app.use(cors());               
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));

@@ -25,7 +25,7 @@ function newGrpcConnection() {
     });
 }
 
-export function getGateway() {
+function getGateway() {
     if (gatewayCache) return gatewayCache;
 
     const client = newGrpcConnection();

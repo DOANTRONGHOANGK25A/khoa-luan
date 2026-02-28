@@ -3,7 +3,7 @@ import multer from "multer";
 import { pool } from "../src/db.js";
 import { requireAuth } from "../middlewares/auth.js";
 import { requireRole } from "../middlewares/role.js";
-import { chainIssue, chainRevoke, chainRead, chainIssueWithWallet, chainRevokeWithWallet } from "../services/fabricDiploma.js";
+import { chainRead, chainIssueWithWallet, chainRevokeWithWallet } from "../services/fabricDiploma.js";
 import { computeRecordHashByDiplomaId } from "../services/recordHash.js";
 
 const router = Router();
@@ -24,7 +24,6 @@ const walletUpload = multer({
     limits: { fileSize: 1 * 1024 * 1024 },
 });
 
-// Helper: chuẩn hóa cực cơ bản (tuần 4 bạn mới làm canonicalization/hashing đầy đủ)
 function trim1(s) {
     return (s ?? "").toString().trim();
 }
