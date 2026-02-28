@@ -376,7 +376,7 @@ export function DiplomaDetailPage() {
                         type="error"
                         showIcon
                         style={{ marginBottom: 16 }}
-                        message={`Bị từ chối bởi: ${diploma.rejected_role === "PRINCIPAL" ? "Hiệu trưởng" : "Quản lý"}`}
+                        message={`Bị từ chối bởi: ${diploma.rejected_role === "ISSUER" ? "Hiệu trưởng" : "Quản lý"}`}
                         description={diploma.rejected_reason}
                     />
                 )}

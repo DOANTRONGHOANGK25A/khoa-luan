@@ -9,10 +9,10 @@ const { Title, Text } = Typography;
 
 // Demo accounts data (mật khẩu thật từ schema.sql)
 const demoAccounts = [
-    { id: 1, username: "admin", password: "Admin@123", role: "ADMIN", description: "Quản trị hệ thống" },
-    { id: 2, username: "staff01", password: "Staff@123", role: "STAFF", description: "Nhân viên tạo hồ sơ" },
-    { id: 3, username: "manager", password: "Manager@123", role: "MANAGER", description: "Quản lý duyệt văn bằng" },
-    { id: 4, username: "issuer", password: "Issuer@123", role: "ISSUER", description: "Người cấp phát" },
+    { id: 1, username: "admin", password: "123456", role: "ADMIN", description: "Quản trị hệ thống" },
+    { id: 2, username: "nhanvien1", password: "123456", role: "STAFF", description: "Nhân viên tạo hồ sơ" },
+    { id: 3, username: "truongphong", password: "123456", role: "MANAGER", description: "Trưởng phòng duyệt văn bằng" },
+    { id: 4, username: "hieutruong", password: "123456", role: "ISSUER", description: "Hiệu trưởng cấp phát" },
 ];
 
 export function LoginPage() {

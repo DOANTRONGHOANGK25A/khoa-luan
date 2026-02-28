@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Layout, Menu, Avatar, Dropdown, Space, Button, theme, Modal, Input, Form, message } from "antd";
+import { Layout, Menu, Avatar, Dropdown, Space, Button, theme, Modal, Input, Form, message, Descriptions, Tag } from "antd";
 import {
     SearchOutlined,
     FileTextOutlined,
@@ -90,6 +90,7 @@ export default function MainLayout() {
     const [collapsed, setCollapsed] = useState(false);
     const [pwdModalOpen, setPwdModalOpen] = useState(false);
     const [pwdLoading, setPwdLoading] = useState(false);
+    const [profileOpen, setProfileOpen] = useState(false);
     const [pwdForm] = Form.useForm();
     const navigate = useNavigate();
     const location = useLocation();
@@ -138,8 +139,8 @@ export default function MainLayout() {
         } else if (key === "change-password") {
             pwdForm.resetFields();
             setPwdModalOpen(true);
-        } else {
-            console.log("User menu click:", key);
+        } else if (key === "profile") {
+            setProfileOpen(true);
         }
     };
 
@@ -298,6 +299,23 @@ export default function MainLayout() {
                         <Input.Password prefix={<LockOutlined />} placeholder="Nhập lại mật khẩu mới" />
                     </Form.Item>
                 </Form>
+            </Modal>
+
+            <Modal
+                title="Thông tin tài khoản"
+                open={profileOpen}
+                onCancel={() => setProfileOpen(false)}
+                footer={<Button onClick={() => setProfileOpen(false)}>Đóng</Button>}
+            >
+                {user && (
+                    <Descriptions bordered column={1} style={{ marginTop: 16 }}>
+                        <Descriptions.Item label="Tên đăng nhập">{user.username}</Descriptions.Item>
+                        <Descriptions.Item label="Mã người dùng">{user.id}</Descriptions.Item>
+                        <Descriptions.Item label="Vai trò">
+                            <Tag color="blue">{roleLabels[user.role] || user.role}</Tag>
+                        </Descriptions.Item>
+                    </Descriptions>
+                )}
             </Modal>
         </Layout>
     );

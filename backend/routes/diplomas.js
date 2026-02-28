@@ -215,24 +215,15 @@ router.put(
             const diplomaPdf = files.diploma?.[0]; // Frontend sends 'diploma'
             const transcriptPdf = files.transcript?.[0]; // Frontend sends 'transcript'
 
-            // Upsert helper with SHA256
-            // Based on user request: "tính sha256 của file ... lưu vào bảng diploma_files"
             const upsertFile = async (kind, f) => {
                 if (!f) return;
-                const importCrypto = await import("crypto"); // Dynamic import or use global require if available. ESM module.
-                // Since this file uses `import`, we can import at top level. But function scope is safer if I can't touch top.
-                // Wait, I can't touch top level imports easily without replacing whole file.
-                // Assuming `crypto` is available or I can import it.
-                // Let's use `crypto` from 'node:crypto'.
-                const hash = importCrypto.createHash("sha256").update(f.buffer).digest("hex");
-
                 await client.query(
-                    `INSERT INTO diploma_files(diploma_id, kind, filename, mime_type, size_bytes, data, sha256)
-               VALUES($1,$2,$3,$4,$5,$6,$7)
+                    `INSERT INTO diploma_files(diploma_id, kind, filename, mime_type, size_bytes, data)
+               VALUES($1,$2,$3,$4,$5,$6)
                ON CONFLICT (diploma_id, kind)
                DO UPDATE SET filename=EXCLUDED.filename, mime_type=EXCLUDED.mime_type,
-                             size_bytes=EXCLUDED.size_bytes, data=EXCLUDED.data, sha256=EXCLUDED.sha256, uploaded_at=now()`,
-                    [id, kind, f.originalname, f.mimetype, f.size, f.buffer, hash]
+                             size_bytes=EXCLUDED.size_bytes, data=EXCLUDED.data, uploaded_at=now()`,
+                    [id, kind, f.originalname, f.mimetype, f.size, f.buffer]
                 );
             };
 
@@ -390,41 +381,39 @@ router.post("/:id/approve", requireAuth, requireRole("MANAGER"), async (req, res
 });
 
 router.post("/:id/reject", requireAuth, requireRole("MANAGER"), async (req, res, next) => {
+    const client = await pool.connect();
     try {
         const id = Number(req.params.id);
         const note = (req.body?.note || "").toString().trim();
 
-        const client = await pool.connect();
-        try {
-            await client.query("BEGIN");
-            const r0 = await client.query("SELECT status FROM diplomas WHERE id=$1 FOR UPDATE", [id]);
-            const d0 = r0.rows[0];
-            if (!d0) { await client.query("ROLLBACK"); return res.status(404).json({ ok: false, message: "Không tìm thấy" }); }
-            if (d0.status !== "PENDING") { await client.query("ROLLBACK"); return res.status(400).json({ ok: false, message: "Chỉ có thể từ chối hồ sơ ở trạng thái Chờ duyệt" }); }
+        await client.query("BEGIN");
+        const r0 = await client.query("SELECT status FROM diplomas WHERE id=$1 FOR UPDATE", [id]);
+        const d0 = r0.rows[0];
+        if (!d0) { await client.query("ROLLBACK"); return res.status(404).json({ ok: false, message: "Không tìm thấy" }); }
+        if (d0.status !== "PENDING") { await client.query("ROLLBACK"); return res.status(400).json({ ok: false, message: "Chỉ có thể từ chối hồ sơ ở trạng thái Chờ duyệt" }); }
 
-            const r1 = await client.query(
-                `UPDATE diplomas
-           SET status='REJECTED', rejected_reason=$1, rejected_role='MANAGER', rejected_at=now(), updated_at=now()
-           WHERE id=$2
-           RETURNING id, serial_no, status, updated_at`,
-                [note || null, id]
-            );
+        const r1 = await client.query(
+            `UPDATE diplomas
+       SET status='REJECTED', rejected_reason=$1, rejected_role='MANAGER', rejected_at=now(), updated_at=now()
+       WHERE id=$2
+       RETURNING id, serial_no, status, updated_at`,
+            [note || null, id]
+        );
 
-            await client.query(
-                `INSERT INTO approval_logs(diploma_id, actor_id, action, note)
-           VALUES($1,$2,'REJECT',$3)`,
-                [id, req.user.id, note || null]
-            );
+        await client.query(
+            `INSERT INTO approval_logs(diploma_id, actor_id, action, note)
+       VALUES($1,$2,'REJECT',$3)`,
+            [id, req.user.id, note || null]
+        );
 
-            await client.query("COMMIT");
-            res.json({ ok: true, data: r1.rows[0] });
-        } catch (e) {
-            await client.query("ROLLBACK");
-            throw e;
-        } finally {
-            client.release();
-        }
-    } catch (e) { next(e); }
+        await client.query("COMMIT");
+        res.json({ ok: true, data: r1.rows[0] });
+    } catch (e) {
+        await client.query("ROLLBACK");
+        next(e);
+    } finally {
+        client.release();
+    }
 });
 
 
@@ -613,7 +602,7 @@ router.post("/:id/revoke", requireAuth, requireRole("ISSUER"), walletUpload.sing
 });
 
 // ---------------------------
-// POST /api/diplomas/:id/reject-issue (ISSUER/PRINCIPAL)
+// POST /api/diplomas/:id/reject-issue (ISSUER)
 // Từ chối phát hành: APPROVED -> REJECTED
 // ---------------------------
 router.post("/:id/reject-issue", requireAuth, requireRole("ISSUER"), async (req, res, next) => {
@@ -630,7 +619,7 @@ router.post("/:id/reject-issue", requireAuth, requireRole("ISSUER"), async (req,
 
         const r1 = await client.query(
             `UPDATE diplomas
-       SET status='REJECTED', rejected_reason=$1, rejected_role='PRINCIPAL', rejected_at=now(), updated_at=now()
+       SET status='REJECTED', rejected_reason=$1, rejected_role='ISSUER', rejected_at=now(), updated_at=now()
        WHERE id=$2
        RETURNING id, serial_no, status, rejected_reason, rejected_role, rejected_at`,
             [reason || null, id]

@@ -72,7 +72,6 @@ CREATE TABLE diploma_files (
   filename    TEXT,
   mime_type   TEXT,
   size_bytes  INT,
-  sha256      TEXT,
   data        BYTEA NOT NULL,
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
@@ -110,12 +109,12 @@ CREATE TABLE chain_logs (
 
 CREATE INDEX idx_chain_diploma ON chain_logs(diploma_id, created_at);
 
--- Seed users (mật khẩu đã băm bcrypt)
+-- Seed users (mật khẩu mặc định: 123456)
 INSERT INTO users (username, password_hash, role)
 VALUES
-  ('admin',   '$2b$12$AeCH1BBgVAkWo347UOBo1.wbaFiG3XZ8T2FYl2srMSi2t1Mt.GRhK', 'ADMIN'),
-  ('staff01', '$2b$12$8aQNy89nZP.5x/OBjyhkG.84ji5DEOYWnbzU6jpF.odRES6iJjcNa', 'STAFF'),
-  ('manager', '$2b$12$OgIRBCMhLZexHYRuyqSDtuiKI6dm6LvlRma1jYvBjZFEY5rNFjgl.', 'MANAGER'),
-  ('issuer',  '$2b$12$6Uue2cSvCKZiD5sJuOvKEubWpPoGTTInWvTrSI9nkTOQx/pa.C7te', 'ISSUER')
+  ('admin',       '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'ADMIN'),
+  ('nhanvien1',   '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'STAFF'),
+  ('truongphong', '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'MANAGER'),
+  ('hieutruong',  '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'ISSUER')
 ON CONFLICT (username) DO NOTHING;
---admin / Admin@123 staff01 / Staff@123 manager / Manager@123 issuer / Issuer@123
+-- Tất cả tài khoản mật khẩu: 123456

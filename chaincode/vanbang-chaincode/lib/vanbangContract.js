@@ -29,13 +29,6 @@ class VanBangContract extends Contract {
     }
 
     /**
-     * Alias for QueryDiploma - backward compatibility
-     */
-    async ReadDiploma(ctx, serialNo) {
-        return this.QueryDiploma(ctx, serialNo);
-    }
-
-    /**
      * Issue a new diploma
      * @param {Context} ctx
      * @param {string} serialNo - unique serial number

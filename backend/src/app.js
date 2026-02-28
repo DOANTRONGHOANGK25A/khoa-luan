@@ -4,11 +4,13 @@ import cors from "cors";
 import authRouter from "../routes/auth.js";
 import usersRouter from "../routes/users.js";
 import diplomasRouter from "../routes/diplomas.js";
+import chainRouter from "../routes/chain.js";
+import publicRouter from "../routes/public.js";
+import issuerRouter from "../routes/issuer.js";
 
 const app = express();
 
-
-app.use(cors());               
+app.use(cors());
 app.use(express.json());
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
@@ -16,12 +18,6 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/diplomas", diplomasRouter);
-
-
-import chainRouter from "../routes/chain.js";
-import publicRouter from "../routes/public.js";
-import issuerRouter from "../routes/issuer.js";
-
 app.use("/api/chain", chainRouter);
 app.use("/api/public", publicRouter);
 app.use("/api/issuer", issuerRouter);

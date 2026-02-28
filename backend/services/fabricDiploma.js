@@ -7,7 +7,7 @@ function toJson(buf) {
 // Đọc văn bằng từ blockchain
 export async function chainRead(serialNo) {
     const c = getContract();
-    const out = await c.evaluateTransaction("ReadDiploma", serialNo);
+    const out = await c.evaluateTransaction("QueryDiploma", serialNo);
     return toJson(out);
 }
 
