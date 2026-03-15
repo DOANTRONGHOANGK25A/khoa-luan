@@ -157,6 +157,7 @@ router.put(
         try {
             const id = Number(req.params.id);
             const {
+                serialNo,
                 studentId,
                 studentName,
                 birthDate,
@@ -182,22 +183,20 @@ router.put(
             }
 
             // 2) Validate required fields
-            // Note: studentId/Name are critical. Others are required for issuance later.
-            // But we already added validation in previous step.
-            // Let's keep it consistent.
-            if (!studentId || !studentName || !birthDate || !major || !ranking || !gpa || !graduationYear) {
+            if (!serialNo || !studentId || !studentName || !birthDate || !major || !ranking || !gpa || !graduationYear) {
                 await client.query("ROLLBACK");
-                return res.status(400).json({ ok: false, message: "Thiếu trường bắt buộc: mã SV, tên SV, ngày sinh, ngành, xếp loại, GPA, năm tốt nghiệp" });
+                return res.status(400).json({ ok: false, message: "Thiếu trường bắt buộc: số hiệu, mã SV, tên SV, ngày sinh, ngành, xếp loại, GPA, năm tốt nghiệp" });
             }
 
-            // 3) Update text fields
+            // 3) Update text fields (including serial_no)
             const r = await client.query(
                 `UPDATE diplomas
-           SET student_id=$1, student_name=$2, birth_date=$3, major=$4, ranking=$5, gpa=$6, graduation_year=$7,
+           SET serial_no=$1, student_id=$2, student_name=$3, birth_date=$4, major=$5, ranking=$6, gpa=$7, graduation_year=$8,
                status='PENDING', updated_at=now()
-           WHERE id=$8
+           WHERE id=$9
            RETURNING id, serial_no, student_id, student_name, status, updated_at`,
                 [
+                    trim1(serialNo),
                     studentId ? trim1(studentId) : null,
                     studentName ? trim1(studentName) : null,
                     birthDate ? trim1(birthDate) : null,
@@ -236,6 +235,11 @@ router.put(
             res.json({ ok: true, data: r.rows[0] });
         } catch (e) {
             await client.query("ROLLBACK");
+
+            // serial_no UNIQUE => conflict
+            if (String(e?.message || "").includes("duplicate") || String(e?.code || "") === "23505") {
+                return res.status(409).json({ ok: false, message: "Số hiệu văn bằng đã tồn tại" });
+            }
             next(e);
         } finally {
             client.release();
