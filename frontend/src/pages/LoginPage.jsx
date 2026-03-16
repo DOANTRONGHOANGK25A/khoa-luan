@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Form, Input, Button, Card, Checkbox, Typography, Space, message, Table, Tag } from "antd";
+import { Form, Input, Button, Card, Checkbox, Typography, Space, message } from "antd";
 import { UserOutlined, LockOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import api from "../api/api";
@@ -7,13 +7,7 @@ import "../styles/login.css";
 
 const { Title, Text } = Typography;
 
-// Demo accounts data (mật khẩu thật từ schema.sql)
-const demoAccounts = [
-    { id: 1, username: "admin", password: "123456", role: "ADMIN", description: "Quản trị hệ thống" },
-    { id: 2, username: "nhanvien1", password: "123456", role: "STAFF", description: "Nhân viên tạo hồ sơ" },
-    { id: 3, username: "truongphong", password: "123456", role: "MANAGER", description: "Trưởng phòng duyệt văn bằng" },
-    { id: 4, username: "hieutruong", password: "123456", role: "ISSUER", description: "Hiệu trưởng cấp phát" },
-];
+
 
 export function LoginPage() {
     const navigate = useNavigate();
@@ -52,47 +46,7 @@ export function LoginPage() {
         }
     };
 
-    const getRoleTag = (role) => {
-        switch (role) {
-            case "ADMIN":
-                return <Tag color="red">Quản trị viên</Tag>;
-            case "STAFF":
-                return <Tag color="blue">Nhân viên</Tag>;
-            case "MANAGER":
-                return <Tag color="gold">Quản lý</Tag>;
-            case "ISSUER":
-                return <Tag color="green">Người cấp phát</Tag>;
-            default:
-                return <Tag>{role}</Tag>;
-        }
-    };
 
-    const accountColumns = [
-        {
-            title: "Tài khoản",
-            dataIndex: "username",
-            key: "username",
-            render: (text) => <Text code copyable>{text}</Text>,
-        },
-        {
-            title: "Mật khẩu",
-            dataIndex: "password",
-            key: "password",
-            render: (text) => <Text code copyable>{text}</Text>,
-        },
-        {
-            title: "Vai trò",
-            dataIndex: "role",
-            key: "role",
-            render: (role) => getRoleTag(role),
-        },
-        {
-            title: "Mô tả",
-            dataIndex: "description",
-            key: "description",
-            ellipsis: true,
-        },
-    ];
 
     return (
         <div className="login-container">
@@ -103,7 +57,9 @@ export function LoginPage() {
             <div className="login-content">
                 <Card className="login-card">
                     <div className="login-header">
-                        <div className="login-logo">🎓</div>
+                        <div className="login-logo">
+                            <img src="/hdu1.png" alt="HDU Logo" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
+                        </div>
                         <Title level={2} className="login-title">
                             Hệ thống Văn bằng số
                         </Title>
@@ -170,16 +126,6 @@ export function LoginPage() {
                             </Button>
                         </Form.Item>
                     </Form>
-                </Card>
-
-                <Card className="demo-accounts-card" title="Tài khoản demo">
-                    <Table
-                        dataSource={demoAccounts}
-                        columns={accountColumns}
-                        rowKey="id"
-                        pagination={false}
-                        size="small"
-                    />
                 </Card>
 
                 <div className="login-info">

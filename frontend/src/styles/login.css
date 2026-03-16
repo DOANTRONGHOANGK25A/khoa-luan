@@ -88,33 +88,7 @@
     color: rgba(255, 255, 255, 0.7) !important;
 }
 
-/* Demo Accounts Card */
-.demo-accounts-card {
-    margin-top: 20px;
-    border-radius: 12px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-}
 
-.demo-accounts-card .ant-card-head {
-    background: #fafafa;
-    border-radius: 12px 12px 0 0;
-}
-
-.demo-accounts-card .ant-card-head-title {
-    font-size: 14px;
-    color: #595959;
-}
-
-.demo-accounts-card .ant-table-thead>tr>th {
-    background: #f5f5f5;
-    font-size: 12px;
-    padding: 8px 12px;
-}
-
-.demo-accounts-card .ant-table-tbody>tr>td {
-    font-size: 12px;
-    padding: 8px 12px;
-}
 
 @media (max-width: 640px) {
     .login-content {
@@ -124,9 +98,5 @@
 
     .login-card .ant-card-body {
         padding: 24px;
-    }
-
-    .demo-accounts-card .ant-table {
-        font-size: 11px;
     }
 }

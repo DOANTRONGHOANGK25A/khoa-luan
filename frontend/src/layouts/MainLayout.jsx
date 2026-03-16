@@ -177,7 +177,9 @@ export default function MainLayout() {
             >
                 <div className="logo-container">
                     <div className="logo">
-                        <div className="logo-icon">🎓</div>
+                        <div className="logo-icon">
+                            <img src="/hdu1.png" alt="HDU Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+                        </div>
                         {!collapsed && <span className="logo-text">Hệ thống Văn bằng số</span>}
                     </div>
                 </div>
@@ -209,11 +211,6 @@ export default function MainLayout() {
                             onClick={() => setCollapsed(!collapsed)}
                             className="collapse-btn"
                         />
-                        <div className="breadcrumb-info">
-                            <span className="current-page">
-                                {menuItems.find((item) => item.key === location.pathname)?.label || "Trang chủ"}
-                            </span>
-                        </div>
                     </div>
 
                     <div className="header-right">

@@ -421,7 +421,7 @@ router.post("/:id/reject", requireAuth, requireRole("MANAGER"), async (req, res,
 });
 
 
-router.get("/:id/approval-logs", requireAuth, requireRole("STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/:id/approval-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const r = await pool.query(
@@ -436,7 +436,7 @@ router.get("/:id/approval-logs", requireAuth, requireRole("STAFF", "MANAGER", "I
     } catch (e) { next(e); }
 });
 
-router.get("/:id/chain-logs", requireAuth, requireRole("STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/:id/chain-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const r = await pool.query(
@@ -450,7 +450,7 @@ router.get("/:id/chain-logs", requireAuth, requireRole("STAFF", "MANAGER", "ISSU
 
 
 
-router.get("/:id/recordhash", requireAuth, requireRole("STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/:id/recordhash", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const out = await computeRecordHashByDiplomaId(id);
