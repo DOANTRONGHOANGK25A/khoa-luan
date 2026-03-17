@@ -56,8 +56,13 @@ const router = createBrowserRouter([
                         element: <IssuancePage />,
                     },
                     {
-                        path: "admin",
-                        element: <AdminUsersPage />,
+                        element: <RequireAuth allowedRoles={["ADMIN"]} />,
+                        children: [
+                            {
+                                path: "admin",
+                                element: <AdminUsersPage />,
+                            },
+                        ],
                     },
                 ],
             },
