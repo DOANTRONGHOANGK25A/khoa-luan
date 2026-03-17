@@ -61,7 +61,7 @@ export function LoginPage() {
                             <img src="/hdu1.png" alt="HDU Logo" style={{ width: '80px', height: '80px', objectFit: 'contain' }} />
                         </div>
                         <Title level={2} className="login-title">
-                            Hệ thống Văn bằng số
+                            Trường Đại học Hồng Đức
                         </Title>
                         <Text type="secondary">
                             Hệ thống quản lý văn bằng số
@@ -129,7 +129,7 @@ export function LoginPage() {
                 </Card>
 
                 <div className="login-info">
-                    <Text type="secondary">© 2025 Hệ thống Văn bằng số. Bảo lưu mọi quyền.</Text>
+                    <Text type="secondary">© 2026 Hệ thống Văn bằng số HDU</Text>
                 </div>
             </div>
         </div>

@@ -180,7 +180,7 @@ export default function MainLayout() {
                         <div className="logo-icon">
                             <img src="/hdu1.png" alt="HDU Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
                         </div>
-                        {!collapsed && <span className="logo-text">Hệ thống Văn bằng số</span>}
+                        {!collapsed && <span className="logo-text">HDU</span>}
                     </div>
                 </div>
 
