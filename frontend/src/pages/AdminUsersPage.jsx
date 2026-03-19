@@ -199,12 +199,7 @@ export function AdminUsersPage() {
         {
             title: "Tên đăng nhập",
             dataIndex: "username",
-            render: (_, record) => (
-                <Space>
-                    <Text strong>{record.username}</Text>
-                    {isCurrentUser(record) && <Tag color="processing">Đang đăng nhập</Tag>}
-                </Space>
-            ),
+            render: (_, record) => <Text strong>{record.username}</Text>,
         },
         {
             title: "Vai trò",
