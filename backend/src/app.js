@@ -4,7 +4,6 @@ import cors from "cors";
 import authRouter from "../routes/auth.js";
 import usersRouter from "../routes/users.js";
 import diplomasRouter from "../routes/diplomas.js";
-import chainRouter from "../routes/chain.js";
 import publicRouter from "../routes/public.js";
 import rectorRouter from "../routes/rector.js";
 
@@ -18,7 +17,6 @@ app.get("/api/health", (req, res) => res.json({ ok: true }));
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/diplomas", diplomasRouter);
-app.use("/api/chain", chainRouter);
 app.use("/api/public", publicRouter);
 app.use("/api/rector", rectorRouter);
 
