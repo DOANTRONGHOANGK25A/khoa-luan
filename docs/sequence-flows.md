@@ -34,7 +34,7 @@ sequenceDiagram
     FE-->>U: Trạng thái Đã duyệt
 ```
 
-## 3. Phát hành (ISSUER)
+## 3. Phát hành (RECTOR)
 ```mermaid
 sequenceDiagram
     participant U as Issuer UI
@@ -55,7 +55,7 @@ sequenceDiagram
     FE-->>U: Thành công
 ```
 
-## 4. Thu hồi (ISSUER)
+## 4. Thu hồi (RECTOR)
 ```mermaid
 sequenceDiagram
     participant U as Issuer UI

@@ -376,7 +376,7 @@ export function DiplomaDetailPage() {
                         type="error"
                         showIcon
                         style={{ marginBottom: 16 }}
-                        message={`Bị từ chối bởi: ${diploma.rejected_role === "ISSUER" ? "Hiệu trưởng" : "Quản lý"}`}
+                        message={`Bị từ chối bởi: ${diploma.rejected_role === "RECTOR" ? "Hiệu trưởng" : "Quản lý"}`}
                         description={diploma.rejected_reason}
                     />
                 )}
@@ -417,7 +417,7 @@ export function DiplomaDetailPage() {
                             </>
                         )}
 
-                        {role === "ISSUER" && diploma.status === STATUS.APPROVED && (
+                        {role === "RECTOR" && diploma.status === STATUS.APPROVED && (
                             <>
                                 <Button type="primary" icon={<RocketOutlined />} onClick={handleIssue}>
                                     Phát hành
@@ -428,7 +428,7 @@ export function DiplomaDetailPage() {
                             </>
                         )}
 
-                        {role === "ISSUER" && diploma.status === STATUS.ISSUED && (
+                        {role === "RECTOR" && diploma.status === STATUS.ISSUED && (
                             <Button danger type="primary" onClick={handleRevoke} icon={<StopOutlined />}>
                                 Thu hồi
                             </Button>
@@ -449,7 +449,7 @@ export function DiplomaDetailPage() {
                                 { title: "Hành động", dataIndex: "action", render: t => <Tag color={t === 'APPROVE' ? 'green' : 'red'}>{t === 'APPROVE' ? 'Duyệt' : 'Từ chối'}</Tag> },
                                 {
                                     title: "Người thực hiện", dataIndex: "actor_username", render: (text, record) => {
-                                        const roleMap = { MANAGER: 'Quản lý', ISSUER: 'Hiệu trưởng', STAFF: 'Nhân viên', ADMIN: 'Quản trị' };
+                                        const roleMap = { MANAGER: 'Quản lý', RECTOR: 'Hiệu trưởng', STAFF: 'Nhân viên', ADMIN: 'Quản trị' };
                                         const roleName = roleMap[record.actor_role] || record.actor_role;
                                         return text ? `${text} (${roleName})` : record.actor_id;
                                     }

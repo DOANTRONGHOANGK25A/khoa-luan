@@ -87,6 +87,6 @@ export async function resubmitDiploma(id) {
 }
 
 export async function createWallet() {
-    const res = await api.post("/issuer/wallet", {}, { responseType: "blob" });
+    const res = await api.post("/rector/wallet", {}, { responseType: "blob" });
     return res.data;
 }

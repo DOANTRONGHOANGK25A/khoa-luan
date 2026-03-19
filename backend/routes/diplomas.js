@@ -248,10 +248,10 @@ router.put(
 );
 
 // ---------------------------
-// GET /api/diplomas (STAFF/MANAGER/ISSUER) - list + search cơ bản
+// GET /api/diplomas (STAFF/MANAGER/RECTOR) - list + search cơ bản
 // query: q, status
 // ---------------------------
-router.get("/", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
     try {
         const q = (req.query.q || "").toString().trim();
         const status = (req.query.status || "").toString().trim();
@@ -291,9 +291,9 @@ router.get("/", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"),
 });
 
 // ---------------------------
-// GET /api/diplomas/:id (STAFF/MANAGER/ISSUER) - chi tiết
+// GET /api/diplomas/:id (STAFF/MANAGER/RECTOR) - chi tiết
 // ---------------------------
-router.get("/:id", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/:id", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const r = await pool.query(
@@ -312,13 +312,13 @@ router.get("/:id", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER
 });
 
 // ---------------------------
-// GET /api/diplomas/:id/files/:kind (STAFF/MANAGER/ISSUER)
+// GET /api/diplomas/:id/files/:kind (STAFF/MANAGER/RECTOR)
 // kind: PORTRAIT | DIPLOMA | TRANSCRIPT
 // ---------------------------
 router.get(
     "/:id/files/:kind",
     requireAuth,
-    requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"),
+    requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"),
     async (req, res, next) => {
         try {
             const id = Number(req.params.id);
@@ -421,7 +421,7 @@ router.post("/:id/reject", requireAuth, requireRole("MANAGER"), async (req, res,
 });
 
 
-router.get("/:id/approval-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/:id/approval-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const r = await pool.query(
@@ -436,7 +436,7 @@ router.get("/:id/approval-logs", requireAuth, requireRole("ADMIN", "STAFF", "MAN
     } catch (e) { next(e); }
 });
 
-router.get("/:id/chain-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/:id/chain-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const r = await pool.query(
@@ -450,7 +450,7 @@ router.get("/:id/chain-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGE
 
 
 
-router.get("/:id/recordhash", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/:id/recordhash", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
     try {
         const id = Number(req.params.id);
         const out = await computeRecordHashByDiplomaId(id);
@@ -459,7 +459,7 @@ router.get("/:id/recordhash", requireAuth, requireRole("ADMIN", "STAFF", "MANAGE
 });
 
 
-router.post("/:id/issue", requireAuth, requireRole("ISSUER"), walletUpload.single("walletFile"), async (req, res, next) => {
+router.post("/:id/issue", requireAuth, requireRole("RECTOR"), walletUpload.single("walletFile"), async (req, res, next) => {
     // Bắt buộc upload wallet
     if (!req.file) return res.status(400).json({ ok: false, message: "Vui lòng tải lên tệp ví (wallet)" });
 
@@ -549,7 +549,7 @@ router.post("/:id/issue", requireAuth, requireRole("ISSUER"), walletUpload.singl
 });
 
 
-router.post("/:id/revoke", requireAuth, requireRole("ISSUER"), walletUpload.single("walletFile"), async (req, res, next) => {
+router.post("/:id/revoke", requireAuth, requireRole("RECTOR"), walletUpload.single("walletFile"), async (req, res, next) => {
     // Bắt buộc upload wallet
     if (!req.file) return res.status(400).json({ ok: false, message: "Vui lòng tải lên tệp ví (wallet)" });
 
@@ -606,10 +606,10 @@ router.post("/:id/revoke", requireAuth, requireRole("ISSUER"), walletUpload.sing
 });
 
 // ---------------------------
-// POST /api/diplomas/:id/reject-issue (ISSUER)
+// POST /api/diplomas/:id/reject-issue (RECTOR)
 // Từ chối phát hành: APPROVED -> REJECTED
 // ---------------------------
-router.post("/:id/reject-issue", requireAuth, requireRole("ISSUER"), async (req, res, next) => {
+router.post("/:id/reject-issue", requireAuth, requireRole("RECTOR"), async (req, res, next) => {
     const client = await pool.connect();
     try {
         const id = Number(req.params.id);
@@ -623,7 +623,7 @@ router.post("/:id/reject-issue", requireAuth, requireRole("ISSUER"), async (req,
 
         const r1 = await client.query(
             `UPDATE diplomas
-       SET status='REJECTED', rejected_reason=$1, rejected_role='ISSUER', rejected_at=now(), updated_at=now()
+       SET status='REJECTED', rejected_reason=$1, rejected_role='RECTOR', rejected_at=now(), updated_at=now()
        WHERE id=$2
        RETURNING id, serial_no, status, rejected_reason, rejected_role, rejected_at`,
             [reason || null, id]

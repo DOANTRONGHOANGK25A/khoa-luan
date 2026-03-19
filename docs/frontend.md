@@ -37,7 +37,7 @@ Auth required:
 - `ADMIN`: `verify`, `diplomas`, `admin`
 - `STAFF`: `verify`, `diplomas`, `create`, `my-diplomas`
 - `MANAGER`: `verify`, `diplomas`, `approval`
-- `ISSUER`: `verify`, `diplomas`, `issuance`
+- `RECTOR`: `verify`, `diplomas`, `issuance`
 
 ## 6. Màn hình chính
 - `LoginPage`

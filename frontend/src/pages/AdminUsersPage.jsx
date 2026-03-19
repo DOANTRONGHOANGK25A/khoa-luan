@@ -17,14 +17,14 @@ const roleColors = {
     ADMIN: "red",
     STAFF: "blue",
     MANAGER: "gold",
-    ISSUER: "green",
+    RECTOR: "green",
 };
 
 const roleLabels = {
     ADMIN: "Quản trị viên",
     STAFF: "Nhân viên",
     MANAGER: "Quản lý",
-    ISSUER: "Người cấp phát",
+    RECTOR: "Hiệu trưởng",
 };
 
 export function AdminUsersPage() {
@@ -374,7 +374,7 @@ export function AdminUsersPage() {
                                 { value: "ADMIN", label: "Quản trị viên" },
                                 { value: "STAFF", label: "Nhân viên" },
                                 { value: "MANAGER", label: "Quản lý" },
-                                { value: "ISSUER", label: "Người cấp phát" },
+                                { value: "RECTOR", label: "Hiệu trưởng" },
                             ]}
                         />
                     </Form.Item>
@@ -440,7 +440,7 @@ export function AdminUsersPage() {
                                 { value: "ADMIN", label: "Quản trị viên" },
                                 { value: "STAFF", label: "Nhân viên" },
                                 { value: "MANAGER", label: "Quản lý" },
-                                { value: "ISSUER", label: "Người cấp phát" },
+                                { value: "RECTOR", label: "Hiệu trưởng" },
                             ]}
                         />
                     </Form.Item>

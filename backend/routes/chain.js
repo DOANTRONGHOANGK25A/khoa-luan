@@ -5,7 +5,7 @@ import { chainRead } from "../services/fabricDiploma.js";
 
 const router = Router();
 
-router.get("/diplomas/:serialNo", requireAuth, requireRole("STAFF", "MANAGER", "ISSUER"), async (req, res, next) => {
+router.get("/diplomas/:serialNo", requireAuth, requireRole("STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
     try {
         const out = await chainRead(req.params.serialNo);
         res.json({ ok: true, data: out });

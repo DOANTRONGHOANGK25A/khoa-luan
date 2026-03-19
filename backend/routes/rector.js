@@ -8,11 +8,11 @@ import { requireRole } from "../middlewares/role.js";
 const router = Router();
 
 /**
- * POST /api/issuer/wallet
+ * POST /api/rector/wallet
  * Tạo wallet.json mới bằng cách register + enroll user mới qua Fabric CA
  * Trả về file download chứa { mspId, certificate, privateKey }
  */
-router.post("/wallet", requireAuth, requireRole("ISSUER"), async (req, res, next) => {
+router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next) => {
     try {
         // 1) Đọc env
         const caUrl = process.env.FABRIC_CA_URL;
@@ -79,7 +79,7 @@ router.post("/wallet", requireAuth, requireRole("ISSUER"), async (req, res, next
         );
 
         // 6) Register user mới
-        const enrollmentID = `issuer_${Date.now()}`;
+        const enrollmentID = `rector_${Date.now()}`;
         let enrollmentSecret;
         try {
             enrollmentSecret = await caClient.register(
@@ -98,9 +98,9 @@ router.post("/wallet", requireAuth, requireRole("ISSUER"), async (req, res, next
         }
 
         // 7) Enroll user mới
-        let issuerEnrollment;
+        let rectorEnrollment;
         try {
-            issuerEnrollment = await caClient.enroll({
+            rectorEnrollment = await caClient.enroll({
                 enrollmentID: enrollmentID,
                 enrollmentSecret: enrollmentSecret
             });
@@ -112,8 +112,8 @@ router.post("/wallet", requireAuth, requireRole("ISSUER"), async (req, res, next
         }
 
         // 8) Lấy certificate và private key
-        const certificate = issuerEnrollment.certificate;
-        const privateKey = issuerEnrollment.key.toBytes();
+        const certificate = rectorEnrollment.certificate;
+        const privateKey = rectorEnrollment.key.toBytes();
 
         // 9) Build wallet object
         const wallet = {

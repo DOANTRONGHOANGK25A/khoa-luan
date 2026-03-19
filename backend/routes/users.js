@@ -5,7 +5,7 @@ import { requireAuth } from "../middlewares/auth.js";
 import { requireRole } from "../middlewares/role.js";
 
 const router = Router();
-const ALLOWED_ROLES = ["ADMIN", "STAFF", "MANAGER", "ISSUER"];
+const ALLOWED_ROLES = ["ADMIN", "STAFF", "MANAGER", "RECTOR"];
 
 function normalizeUsername(username) {
     return String(username || "").trim();

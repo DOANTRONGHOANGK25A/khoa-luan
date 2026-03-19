@@ -6,7 +6,7 @@ import usersRouter from "../routes/users.js";
 import diplomasRouter from "../routes/diplomas.js";
 import chainRouter from "../routes/chain.js";
 import publicRouter from "../routes/public.js";
-import issuerRouter from "../routes/issuer.js";
+import rectorRouter from "../routes/rector.js";
 
 const app = express();
 
@@ -20,7 +20,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/diplomas", diplomasRouter);
 app.use("/api/chain", chainRouter);
 app.use("/api/public", publicRouter);
-app.use("/api/issuer", issuerRouter);
+app.use("/api/rector", rectorRouter);
 
 // error handler cơ bản
 app.use((err, req, res, next) => {

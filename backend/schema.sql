@@ -9,7 +9,7 @@ CREATE TABLE users (
   id            BIGSERIAL PRIMARY KEY,
   username      TEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
-  role          TEXT NOT NULL CHECK (role IN ('ADMIN','STAFF','MANAGER','ISSUER')),
+  role          TEXT NOT NULL CHECK (role IN ('ADMIN','STAFF','MANAGER','RECTOR')),
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -115,6 +115,6 @@ VALUES
   ('admin',       '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'ADMIN'),
   ('nhanvien1',   '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'STAFF'),
   ('truongphong', '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'MANAGER'),
-  ('hieutruong',  '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'ISSUER')
+  ('hieutruong',  '$2b$12$YgKhuefh2FSRegI1wE62ZOdyxz0SKQgoiGbR/BdWZv64pgbcjMKNy', 'RECTOR')
 ON CONFLICT (username) DO NOTHING;
 -- Tất cả tài khoản mật khẩu: 123456

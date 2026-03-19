@@ -23,7 +23,7 @@ const roleLabels = {
     ADMIN: "Quản trị viên",
     STAFF: "Nhân viên",
     MANAGER: "Quản lý",
-    ISSUER: "Người cấp phát",
+    RECTOR: "Hiệu trưởng",
 };
 
 const menuItems = [
@@ -114,7 +114,7 @@ export default function MainLayout() {
                 return menuItems.filter(item => ["/verify", "/diplomas", "/create", "/my-diplomas"].includes(item.key));
             case "MANAGER":
                 return menuItems.filter(item => ["/verify", "/diplomas", "/approval"].includes(item.key));
-            case "ISSUER":
+            case "RECTOR":
                 return menuItems.filter(item => ["/verify", "/diplomas", "/issuance"].includes(item.key));
             default:
                 return menuItems.filter(item => item.key === "/verify");

@@ -28,7 +28,7 @@ Backend cung cấp REST API cho quản lý hồ sơ văn bằng, xác thực, ph
 ## 4. Auth và role
 - Auth: `Authorization: Bearer <token>`.
 - Session: lưu trong `Map`, TTL qua `SESSION_TTL_MINUTES` (mặc định 480).
-- Role hợp lệ: `ADMIN`, `STAFF`, `MANAGER`, `ISSUER`.
+- Role hợp lệ: `ADMIN`, `STAFF`, `MANAGER`, `RECTOR`.
 
 ## 5. Cơ sở dữ liệu
 Bảng chính:
@@ -60,9 +60,9 @@ Trạng thái hồ sơ:
 - `POST /api/diplomas/:id/approve` (MANAGER)
 - `POST /api/diplomas/:id/reject` (MANAGER)
 - `POST /api/diplomas/:id/resubmit` (STAFF)
-- `POST /api/diplomas/:id/issue` (ISSUER, upload wallet)
-- `POST /api/diplomas/:id/revoke` (ISSUER, upload wallet)
-- `POST /api/diplomas/:id/reject-issue` (ISSUER)
+- `POST /api/diplomas/:id/issue` (RECTOR, upload wallet)
+- `POST /api/diplomas/:id/revoke` (RECTOR, upload wallet)
+- `POST /api/diplomas/:id/reject-issue` (RECTOR)
 - `GET /api/diplomas/:id/approval-logs`
 - `GET /api/diplomas/:id/chain-logs`
 - `GET /api/diplomas/:id/recordhash`
@@ -72,7 +72,7 @@ Trạng thái hồ sơ:
 - `GET /api/public/verify`
 - `GET /api/public/diplomas/:id/files/:kind`
 - `GET /api/chain/diplomas/:serialNo`
-- `POST /api/issuer/wallet` (ISSUER)
+- `POST /api/rector/wallet` (RECTOR)
 
 ## 7. Hash verification
 `recordHash` được tạo từ:
