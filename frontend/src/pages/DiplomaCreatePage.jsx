@@ -295,10 +295,10 @@ export function DiplomaCreatePage() {
                                 name="serialNo"
                                 rules={[
                                     { required: true, message: "Vui lòng nhập số hiệu văn bằng" },
-                                    { pattern: /^[A-Z]{2}\d{4}-\d{3}$/, message: "Định dạng: XX0000-000" },
+                                    { pattern: /^HDU\.[A-Z] \d{6}$/, message: "Định dạng: HDU.X NNNNNN (VD: HDU.B 008929)" },
                                 ]}
                             >
-                                <Input placeholder="VD: TN2025-001" />
+                                <Input placeholder="VD: HDU.B 008100" />
                             </Form.Item>
                         </Col>
 
@@ -306,9 +306,12 @@ export function DiplomaCreatePage() {
                             <Form.Item
                                 label="Mã sinh viên"
                                 name="studentId"
-                                rules={[{ required: true, message: "Vui lòng nhập mã sinh viên" }]}
+                                rules={[
+                                    { required: true, message: "Vui lòng nhập mã sinh viên" },
+                                    { pattern: /^\d{10}$/, message: "Mã sinh viên phải gồm đúng 10 chữ số" },
+                                ]}
                             >
-                                <Input placeholder="VD: 20210001" />
+                                <Input placeholder="VD: 2261030016" />
                             </Form.Item>
                         </Col>
                     </Row>

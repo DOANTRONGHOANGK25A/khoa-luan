@@ -60,6 +60,15 @@ router.post(
                 return res.status(400).json({ ok: false, message: "Vui lòng nhập số hiệu, mã sinh viên và tên sinh viên" });
             }
 
+            // Validate serial_no format: HDU.X NNNNNN
+            if (!/^HDU\.[A-Z] \d{6}$/.test(trim1(serialNo))) {
+                return res.status(400).json({ ok: false, message: "Số hiệu văn bằng phải đúng định dạng HDU.X NNNNNN (VD: HDU.B 008929)" });
+            }
+            // Validate student_id format: 10 digits
+            if (!/^\d{10}$/.test(trim1(studentId))) {
+                return res.status(400).json({ ok: false, message: "Mã sinh viên phải gồm đúng 10 chữ số (VD: 2261030016)" });
+            }
+
             // Validate fields required for future issuance
             if (!birthDate) return res.status(400).json({ ok: false, message: "Thiếu trường bắt buộc: ngày sinh" });
             if (!major) return res.status(400).json({ ok: false, message: "Thiếu trường bắt buộc: ngành học" });
@@ -186,6 +195,17 @@ router.put(
             if (!serialNo || !studentId || !studentName || !birthDate || !major || !ranking || !gpa || !graduationYear) {
                 await client.query("ROLLBACK");
                 return res.status(400).json({ ok: false, message: "Thiếu trường bắt buộc: số hiệu, mã SV, tên SV, ngày sinh, ngành, xếp loại, GPA, năm tốt nghiệp" });
+            }
+
+            // Validate serial_no format: HDU.X NNNNNN
+            if (!/^HDU\.[A-Z] \d{6}$/.test(trim1(serialNo))) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, message: "Số hiệu văn bằng phải đúng định dạng HDU.X NNNNNN (VD: HDU.B 008929)" });
+            }
+            // Validate student_id format: 10 digits
+            if (!/^\d{10}$/.test(trim1(studentId))) {
+                await client.query("ROLLBACK");
+                return res.status(400).json({ ok: false, message: "Mã sinh viên phải gồm đúng 10 chữ số (VD: 2261030016)" });
             }
 
             // 3) Update text fields (including serial_no)
