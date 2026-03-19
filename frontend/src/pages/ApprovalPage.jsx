@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Card, Table, Button, Space, Tag, Typography, Divider, Empty, Popconfirm, message, Tooltip } from "antd";
+import { Card, Table, Button, Space, Tag, Typography, Divider, Empty, Popconfirm, message, Tooltip, Modal, Input } from "antd";
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
@@ -15,6 +15,8 @@ const { Title, Text } = Typography;
 export function ApprovalPage() {
     const [data, setData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [rejectModal, setRejectModal] = useState({ open: false, record: null });
+    const [rejectReason, setRejectReason] = useState("");
     const navigate = useNavigate();
 
     // Fetch pending diplomas on mount
@@ -52,15 +54,13 @@ export function ApprovalPage() {
         }
     };
 
-    const handleReject = async (record) => {
-        const reason = window.prompt("Nhập lý do từ chối (nếu có):");
-        if (reason === null) { // User clicked Cancel
-            return;
-        }
+    const handleReject = async () => {
+        const { record } = rejectModal;
+        if (!record) return;
 
         try {
             setLoading(true);
-            const res = await rejectDiploma(record.id, reason);
+            const res = await rejectDiploma(record.id, rejectReason);
             if (res && res.ok) {
                 message.success(`Đã từ chối hồ sơ ${record.serial_no}`);
                 fetchData(); // Refresh list
@@ -68,7 +68,10 @@ export function ApprovalPage() {
         } catch (error) {
             console.error("Reject error:", error);
             message.error("Lỗi khi từ chối hồ sơ");
+        } finally {
             setLoading(false);
+            setRejectModal({ open: false, record: null });
+            setRejectReason("");
         }
     };
 
@@ -122,7 +125,7 @@ export function ApprovalPage() {
                         </Button>
                     </Popconfirm>
                     <Tooltip title="Từ chối">
-                        <Button danger icon={<CloseCircleOutlined />} onClick={() => handleReject(record)} />
+                        <Button danger icon={<CloseCircleOutlined />} onClick={() => { setRejectReason(""); setRejectModal({ open: true, record }); }} />
                     </Tooltip>
                 </Space>
             ),
@@ -178,6 +181,25 @@ export function ApprovalPage() {
                     />
                 )}
             </Card>
+
+            <Modal
+                title="Từ chối hồ sơ"
+                open={rejectModal.open}
+                onOk={handleReject}
+                onCancel={() => { setRejectModal({ open: false, record: null }); setRejectReason(""); }}
+                okText="Xác nhận từ chối"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+                confirmLoading={loading}
+            >
+                <p>Nhập lý do từ chối hồ sơ <b>{rejectModal.record?.serial_no}</b>:</p>
+                <Input.TextArea
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    placeholder="Lý do từ chối..."
+                />
+            </Modal>
         </div>
     );
 }

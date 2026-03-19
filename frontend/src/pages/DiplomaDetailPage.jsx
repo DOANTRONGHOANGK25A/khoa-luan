@@ -60,6 +60,8 @@ export function DiplomaDetailPage() {
     const [walletFile, setWalletFile] = useState(null);
     const [rejectIssueModal, setRejectIssueModal] = useState(false);
     const [rejectIssueReason, setRejectIssueReason] = useState("");
+    const [rejectModal, setRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
 
     const userStr = localStorage.getItem("user");
     const user = userStr ? JSON.parse(userStr) : null;
@@ -140,12 +142,11 @@ export function DiplomaDetailPage() {
     };
 
     const handleReject = async () => {
-        const reason = window.prompt("Nhập lý do từ chối (nếu có):");
-        if (reason === null) return;
-
         try {
-            await rejectDiploma(id, reason);
+            await rejectDiploma(id, rejectReason);
             message.success("Đã từ chối hồ sơ");
+            setRejectModal(false);
+            setRejectReason("");
             fetchDiploma();
         } catch {
             message.error("Lỗi khi từ chối");
@@ -411,7 +412,7 @@ export function DiplomaDetailPage() {
                                 <Button type="primary" onClick={handleApprove} icon={<CheckCircleOutlined />}>
                                     Duyệt
                                 </Button>
-                                <Button danger onClick={handleReject} icon={<CloseCircleOutlined />}>
+                                <Button danger onClick={() => { setRejectReason(""); setRejectModal(true); }} icon={<CloseCircleOutlined />}>
                                     Từ chối
                                 </Button>
                             </>
@@ -522,6 +523,24 @@ export function DiplomaDetailPage() {
                     rows={3}
                     value={rejectIssueReason}
                     onChange={(e) => setRejectIssueReason(e.target.value)}
+                    placeholder="Lý do từ chối..."
+                />
+            </Modal>
+
+            <Modal
+                title="Từ chối hồ sơ"
+                open={rejectModal}
+                onOk={handleReject}
+                onCancel={() => { setRejectModal(false); setRejectReason(""); }}
+                okText="Xác nhận từ chối"
+                cancelText="Hủy"
+                okButtonProps={{ danger: true }}
+            >
+                <p>Nhập lý do từ chối hồ sơ <b>{diploma?.serial_no}</b>:</p>
+                <Input.TextArea
+                    rows={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
                     placeholder="Lý do từ chối..."
                 />
             </Modal>
