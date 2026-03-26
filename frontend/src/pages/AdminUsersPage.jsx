@@ -230,7 +230,7 @@ export function AdminUsersPage() {
                     <Tooltip title={actionDisabledReason(record) || "Đặt lại mật khẩu"}>
                         <Button
                             type="text"
-                            icon={<KeyOutlined />}
+                            icon={<KeyOutlined rotate={315} />}
                             disabled={Boolean(actionDisabledReason(record)) || submitting}
                             onClick={() => handleOpenResetPassword(record)}
                         />
@@ -459,7 +459,7 @@ export function AdminUsersPage() {
             <Modal
                 title={
                     <Space>
-                        <KeyOutlined />
+                        <KeyOutlined rotate={315} />
                         <span>Đặt lại mật khẩu</span>
                     </Space>
                 }

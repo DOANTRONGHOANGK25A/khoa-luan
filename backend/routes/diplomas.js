@@ -64,7 +64,6 @@ router.post(
             if (!/^HDU\.[A-Z] \d{6}$/.test(trim1(serialNo))) {
                 return res.status(400).json({ ok: false, message: "Số hiệu văn bằng phải đúng định dạng HDU.X NNNNNN (VD: HDU.B 008929)" });
             }
-            // Validate student_id format: 10 digits
             if (!/^\d{10}$/.test(trim1(studentId))) {
                 return res.status(400).json({ ok: false, message: "Mã sinh viên phải gồm đúng 10 chữ số (VD: 2261030016)" });
             }
@@ -114,10 +113,7 @@ router.post(
             const insertFile = async (kind, f) => {
                 await client.query(
                     `INSERT INTO diploma_files(diploma_id, kind, filename, mime_type, size_bytes, data)
-           VALUES($1,$2,$3,$4,$5,$6)
-           ON CONFLICT (diploma_id, kind)
-           DO UPDATE SET filename=EXCLUDED.filename, mime_type=EXCLUDED.mime_type,
-                         size_bytes=EXCLUDED.size_bytes, data=EXCLUDED.data, uploaded_at=now()`,
+           VALUES($1,$2,$3,$4,$5,$6)`,
                     [diplomaRow.id, kind, f.originalname, f.mimetype, f.size, f.buffer]
                 );
             };
@@ -150,7 +146,7 @@ router.post(
 );
 
 // ---------------------------
-// PUT /api/diplomas/:id (STAFF) - chỉ sửa khi PENDING
+// PUT /api/diplomas/:id (STAFF) - chỉ sửa khi PENDING hoặc REJECTED
 // ---------------------------
 router.put(
     "/:id",
