@@ -148,7 +148,6 @@ router.get("/diplomas/:id/files/:kind", async (req, res, next) => {
         if (!f) return res.status(404).json({ ok: false, message: "Không tìm thấy tệp" });
 
         res.setHeader("Content-Type", f.mime_type || "application/octet-stream");
-        res.setHeader("Content-Disposition", `inline; filename="${f.filename || kind}"`);
         res.send(f.data);
     } catch (e) {
         next(e);

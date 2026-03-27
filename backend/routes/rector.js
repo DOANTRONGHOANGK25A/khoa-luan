@@ -7,25 +7,23 @@ import { requireRole } from "../middlewares/role.js";
 
 const router = Router();
 
-/**
- * POST /api/rector/wallet
- * Tạo wallet.json mới bằng cách register + enroll user mới qua Fabric CA
- * Trả về file download chứa { mspId, certificate, privateKey }
- */
+
 router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next) => {
     try {
-        // 1) Đọc env
-        const caUrl = process.env.FABRIC_CA_URL;
-        const caName = process.env.FABRIC_CA_NAME || undefined;
-        const registrarId = process.env.FABRIC_CA_REGISTRAR_ID;
-        const registrarSecret = process.env.FABRIC_CA_REGISTRAR_SECRET;
-        const affiliation = process.env.FABRIC_CA_AFFILIATION || "org1.department1";
-        const mspId = process.env.FABRIC_MSPID || "Org1MSP";
-        const caVerify = process.env.FABRIC_CA_VERIFY !== "false"; // mặc định verify=true
-        const caTlsCertPath = process.env.FABRIC_CA_TLS_CERT_PATH;
+        // 1) Đọc cấu hình Fabric CA từ biến môi trường
+        const caConfig = {
+            url:             process.env.FABRIC_CA_URL,
+            name:            process.env.FABRIC_CA_NAME || undefined,
+            registrarId:     process.env.FABRIC_CA_REGISTRAR_ID,
+            registrarSecret: process.env.FABRIC_CA_REGISTRAR_SECRET,
+            affiliation:     process.env.FABRIC_CA_AFFILIATION || "org1.department1",
+            mspId:           process.env.FABRIC_MSPID || "Org1MSP",
+            verify:          process.env.FABRIC_CA_VERIFY !== "false", // mặc định verify=true
+            tlsCertPath:     process.env.FABRIC_CA_TLS_CERT_PATH,
+        };
 
         // Validate env
-        if (!caUrl || !registrarId || !registrarSecret) {
+        if (!caConfig.url || !caConfig.registrarId || !caConfig.registrarSecret) {
             return res.status(500).json({
                 ok: false,
                 message: "Thiếu env: FABRIC_CA_URL, FABRIC_CA_REGISTRAR_ID, FABRIC_CA_REGISTRAR_SECRET"
@@ -34,21 +32,21 @@ router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next
 
         // 2) TLS options
         let tlsOptions = { verify: false };
-        if (caVerify && caTlsCertPath) {
-            if (!fs.existsSync(caTlsCertPath)) {
+        if (caConfig.verify && caConfig.tlsCertPath) {
+            if (!fs.existsSync(caConfig.tlsCertPath)) {
                 return res.status(500).json({
                     ok: false,
-                    message: `FABRIC_CA_TLS_CERT_PATH không tồn tại: ${caTlsCertPath}`
+                    message: `FABRIC_CA_TLS_CERT_PATH không tồn tại: ${caConfig.tlsCertPath}`
                 });
             }
-            const caCert = fs.readFileSync(caTlsCertPath, "utf8");
+            const caCert = fs.readFileSync(caConfig.tlsCertPath, "utf8");
             tlsOptions = { trustedRoots: [caCert], verify: true };
         }
 
         // 3) Tạo CA client
         let caClient;
         try {
-            caClient = new FabricCAServices(caUrl, { trustedRoots: tlsOptions.trustedRoots || [], verify: tlsOptions.verify }, caName);
+            caClient = new FabricCAServices(caConfig.url, { trustedRoots: tlsOptions.trustedRoots || [], verify: tlsOptions.verify }, caConfig.name);
         } catch (e) {
             return res.status(503).json({
                 ok: false,
@@ -60,8 +58,8 @@ router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next
         let adminEnrollment;
         try {
             adminEnrollment = await caClient.enroll({
-                enrollmentID: registrarId,
-                enrollmentSecret: registrarSecret
+                enrollmentID: caConfig.registrarId,
+                enrollmentSecret: caConfig.registrarSecret
             });
         } catch (e) {
             return res.status(503).json({
@@ -71,11 +69,11 @@ router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next
         }
 
         // 5) Tạo admin user object để register user mới
-        const adminUser = new User(registrarId);
+        const adminUser = new User(caConfig.registrarId);
         await adminUser.setEnrollment(
             adminEnrollment.key,
             adminEnrollment.certificate,
-            mspId
+            caConfig.mspId
         );
 
         // 6) Register user mới
@@ -85,7 +83,7 @@ router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next
             enrollmentSecret = await caClient.register(
                 {
                     enrollmentID: enrollmentID,
-                    affiliation: affiliation,
+                    affiliation: caConfig.affiliation,
                     role: "client"
                 },
                 adminUser
@@ -117,7 +115,7 @@ router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next
 
         // 9) Build wallet object
         const wallet = {
-            mspId: mspId,
+            mspId: caConfig.mspId,
             certificate: certificate,
             privateKey: privateKey
         };

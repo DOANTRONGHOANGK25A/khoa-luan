@@ -1,49 +1,45 @@
 import crypto from "crypto";
 import { pool } from "../src/db.js";
 
-/* ── low-level helpers ── */
-
 export function sha256Hex(data) {
     return crypto.createHash("sha256").update(data).digest("hex");
 }
 
-/** Trim, collapse whitespace, remove stray newlines, NFC-normalise */
 function normStr(x) {
     if (x === null || x === undefined) return "";
     return x.toString().normalize("NFC").trim().replace(/[\r\n]+/g, " ").replace(/\s+/g, " ");
 }
 
-/** Always YYYY-MM-DD */
+/** Định dạng ngày tháng luôn là YYYY-MM-DD */
 function normDate(x) {
     if (!x) return "";
     if (x instanceof Date) return x.toISOString().slice(0, 10);
     return x.toString().trim().slice(0, 10);
 }
 
-/** Always 4-digit year string */
+/** Định dạng năm luôn là chuỗi 4 chữ số */
 function normYear(x) {
     if (x === null || x === undefined) return "";
     return String(Number(x));
 }
 
-/** Always X.XX (2 decimal places) */
+/** Định dạng GPA luôn là X.XX (2 chữ số thập phân) */
 function normGpa(x) {
     if (x === null || x === undefined) return "";
     return Number(x).toFixed(2);
 }
 
-/* ── canonical text builder (deterministic, key=value lines) ── */
 
 /**
- * Build a deterministic canonical text from diploma core fields
- * and the three file SHA-256 hashes.
+ * Xây dựng văn bản chuẩn hóa (canonical text) mang tính tất định từ các trường thông tin cốt lõi
+ * của văn bằng và mã băm SHA-256 của 3 file đính kèm.
  *
- * Field order is FIXED:
+ * Thứ tự các trường là CỐ ĐỊNH (FIXED):
  *   serialNo, studentId, studentName, birthDate, major, ranking,
  *   gpa, graduationYear, portraitSha256, diplomaSha256, transcriptSha256
  *
- * @param {object} fields  – must contain all 11 keys
- * @returns {string} lines joined by LF (\n)
+ * @param {object} fields  – bắt buộc phải chứa đủ 11 khóa (keys)
+ * @returns {string} các dòng được nối với nhau bằng ký tự xuống dòng (LF \n)
  */
 export function buildCanonicalText(fields) {
     const lines = [
@@ -62,12 +58,12 @@ export function buildCanonicalText(fields) {
     return lines.join("\n");
 }
 
-/** sha256( utf-8( canonicalText ) )  →  hex lowercase */
+/** sha256( utf-8( canonicalText ) )  →  trả về chuỗi hex in thường */
 export function computeRecordHash(canonicalText) {
     return sha256Hex(Buffer.from(canonicalText, "utf8"));
 }
 
-/* ── main entry: read DB + files → recordHash ── */
+/* ── Điểm vào chính: đọc Database + các files → sinh ra mã băm tổng recordHash ── */
 
 export async function computeRecordHashByDiplomaId(id) {
     const d = await pool.query("SELECT * FROM diplomas WHERE id=$1", [id]);
