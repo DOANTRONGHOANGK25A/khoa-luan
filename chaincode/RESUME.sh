@@ -1,9 +1,5 @@
 #!/bin/bash
 
-# Script để KHỞI ĐỘNG LẠI Fabric network sau khi tắt máy
-# Không xóa data, không deploy lại — chỉ restart containers
-# Chạy: cd /home/hoang/khoa-luan/chaincode && bash RESUME.sh
-
 set -e
 
 echo "Kiểm tra Docker..."
@@ -36,6 +32,3 @@ docker ps --filter "network=fabric_test" --format "table {{.Names}}\t{{.Status}}
 echo ""
 echo "HOÀN TẤT! Network đã được khởi động lại (dữ liệu blockchain được giữ nguyên)."
 echo "   Peer sẽ tự khởi động lại chaincode container khi có request đầu tiên."
-echo ""
-echo "Tiếp theo, khởi động backend:"
-echo "   cd /home/hoang/khoa-luan/backend && npm run dev"

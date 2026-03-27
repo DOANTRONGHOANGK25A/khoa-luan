@@ -38,7 +38,7 @@ class VanBangContract extends Contract {
             throw new Error("INVALID_JSON: " + e.message);
         }
 
-        // Validate required fields
+
         const requiredFields = ["studentId", "studentName", "birthDate", "major", "ranking", "gpa", "graduationYear", "recordHash"];
         for (const field of requiredFields) {
             if (input[field] === undefined || input[field] === null || input[field] === "") {
@@ -46,7 +46,6 @@ class VanBangContract extends Contract {
             }
         }
 
-        // Validate recordHash format (64 hex chars)
         const recordHash = input.recordHash.trim().toLowerCase();
         if (!/^[0-9a-f]{64}$/.test(recordHash)) {
             throw new Error("recordHash must be 64 hex chars");

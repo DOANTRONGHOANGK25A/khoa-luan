@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Script để deploy chaincode vanbang cho khóa luận
-# Chạy: cd /home/hoang/khoa-luan/chaincode && bash DEPLOY.sh
-
 set -e
 
 NETWORK_DIR="/home/hoang/khoa-luan/network/fabric-samples/test-network"
@@ -32,6 +29,3 @@ echo "HOÀN TẤT! Fabric network đang chạy + chaincode 'vanbang' đã deploy
 echo ""
 echo "Kiểm tra nhanh:"
 echo "   docker ps | grep dev-peer"
-echo ""
-echo "Sau khi deploy, khởi động backend:"
-echo "   cd /home/hoang/khoa-luan/backend && npm run dev"
