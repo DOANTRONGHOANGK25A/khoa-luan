@@ -351,8 +351,6 @@ router.get(
             if (!f) return res.status(404).json({ ok: false, message: "Không tìm thấy tệp" });
 
             res.setHeader("Content-Type", f.mime_type || "application/octet-stream");
-            // cơ bản: cho tải xuống
-            res.setHeader("Content-Disposition", `attachment; filename="${f.filename || kind}"`);
             res.send(f.data);
         } catch (e) {
             next(e);
@@ -460,16 +458,6 @@ router.get("/:id/chain-logs", requireAuth, requireRole("ADMIN", "STAFF", "MANAGE
     } catch (e) { next(e); }
 });
 
-
-
-
-router.get("/:id/recordhash", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
-    try {
-        const id = Number(req.params.id);
-        const out = await computeRecordHashByDiplomaId(id);
-        res.json({ ok: true, data: out });
-    } catch (e) { next(e); }
-});
 
 
 router.post("/:id/issue", requireAuth, requireRole("RECTOR"), walletUpload.single("walletFile"), async (req, res, next) => {
