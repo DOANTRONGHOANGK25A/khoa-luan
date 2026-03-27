@@ -194,7 +194,7 @@ export function IssuancePage() {
         },
         {
             title: "Hành động",
-            width: 160,
+            width: 170,
             align: "center",
             render: (_, record) => (
                 <Space>

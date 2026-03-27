@@ -13,12 +13,7 @@ function ensureIsoTime(t) {
 }
 
 class VanBangContract extends Contract {
-    /**
-     * Query diploma by serialNo
-     * @param {Context} ctx
-     * @param {string} serialNo
-     * @returns {string} JSON string of diploma record
-     */
+
     async QueryDiploma(ctx, serialNo) {
         serialNo = ensureSerial(serialNo);
 
@@ -28,13 +23,6 @@ class VanBangContract extends Contract {
         return data.toString();
     }
 
-    /**
-     * Issue a new diploma
-     * @param {Context} ctx
-     * @param {string} serialNo - unique serial number
-     * @param {string} jsonRecordString - JSON string containing: studentId, studentName, birthDate, major, ranking, gpa, graduationYear, recordHash, issuedAt
-     * @returns {string} JSON string of created diploma
-     */
     async IssueDiploma(ctx, serialNo, jsonRecordString) {
         serialNo = ensureSerial(serialNo);
 
@@ -88,13 +76,6 @@ class VanBangContract extends Contract {
         return JSON.stringify(obj);
     }
 
-    /**
-     * Revoke an existing diploma
-     * @param {Context} ctx
-     * @param {string} serialNo
-     * @param {string} revokedAt - ISO timestamp
-     * @returns {string} JSON string of updated diploma
-     */
     async RevokeDiploma(ctx, serialNo, revokedAt) {
         serialNo = ensureSerial(serialNo);
         revokedAt = ensureIsoTime(revokedAt);
