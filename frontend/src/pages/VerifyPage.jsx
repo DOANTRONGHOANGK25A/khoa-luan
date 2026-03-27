@@ -82,15 +82,19 @@ export function VerifyPage() {
     const handleDownloadFile = async (kind, fileName) => {
         if (!selected) return;
         try {
-            const blob = await downloadPublicDiplomaFile(selected.id, kind);
-            const url = window.URL.createObjectURL(blob);
+            // Dùng lại URL đã tải sẵn cho preview, nếu có
+            let url = fileUrls[kind];
+            if (!url) {
+                const blob = await downloadPublicDiplomaFile(selected.id, kind);
+                url = window.URL.createObjectURL(blob);
+            }
             const link = document.createElement("a");
             link.href = url;
             link.setAttribute("download", fileName || `${kind}.pdf`);
             document.body.appendChild(link);
             link.click();
             link.parentNode.removeChild(link);
-            URL.revokeObjectURL(url);
+            // Không revoke URL ở đây vì nó đang được dùng cho preview
         } catch {
             message.error("Lỗi khi tải file");
         }

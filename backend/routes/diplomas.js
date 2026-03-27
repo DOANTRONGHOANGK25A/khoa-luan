@@ -242,7 +242,6 @@ router.put(
                 );
             };
 
-            // Mapping: 'PORTRAIT', 'DIPLOMA', 'TRANSCRIPT'
             await upsertFile("PORTRAIT", portrait);
             await upsertFile("DIPLOMA", diplomaPdf);
             await upsertFile("TRANSCRIPT", transcriptPdf);
@@ -264,43 +263,42 @@ router.put(
 );
 
 // ---------------------------
-// GET /api/diplomas (STAFF/MANAGER/RECTOR) - list + search cơ bản
-// query: q, status
+// GET /api/diplomas (STAFF/MANAGER/RECTOR) - Lấy danh sách + tìm kiếm
 // ---------------------------
 router.get("/", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR"), async (req, res, next) => {
     try {
-        const q = (req.query.q || "").toString().trim();
-        const status = (req.query.status || "").toString().trim();
+        const searchKeyword = (req.query.q || "").toString().trim();
+        const filterStatus = (req.query.status || "").toString().trim();
 
+        const conditions = [];
         const params = [];
-        const where = [];
 
-        if (status) {
-            params.push(status);
-            where.push(`d.status = $${params.length}`);
+        if (filterStatus) {
+            params.push(filterStatus);
+            conditions.push(`d.status = $${params.length}`);
         }
 
-        if (q) {
-            params.push(`%${q.toLowerCase()}%`);
-            where.push(`(
-        lower(d.serial_no) LIKE $${params.length}
-        OR lower(d.student_id) LIKE $${params.length}
-        OR lower(d.student_name) LIKE $${params.length}
-      )`);
+        if (searchKeyword) {
+            params.push(`%${searchKeyword.toLowerCase()}%`);
+            const p = `$${params.length}`;
+            conditions.push(`(lower(d.serial_no) LIKE ${p} OR lower(d.student_id) LIKE ${p} OR lower(d.student_name) LIKE ${p})`);
         }
+
+        const whereSql = conditions.length > 0
+            ? "WHERE " + conditions.join(" AND ")
+            : "";
 
         const sql = `
-      SELECT d.*,
-        (SELECT COUNT(*) FROM diploma_files f WHERE f.diploma_id=d.id) AS file_count,
-        (SELECT c.tx_id FROM chain_logs c WHERE c.diploma_id=d.id ORDER BY c.created_at DESC LIMIT 1) AS last_tx_id
-      FROM diplomas d
-      ${where.length ? "WHERE " + where.join(" AND ") : ""}
-      ORDER BY d.created_at DESC
-      LIMIT 50
-    `;
+            SELECT d.*,
+                (SELECT c.tx_id  FROM chain_logs c    WHERE c.diploma_id = d.id ORDER BY c.created_at DESC LIMIT 1) AS last_tx_id
+            FROM diplomas d
+            ${whereSql}
+            ORDER BY d.created_at DESC
+            LIMIT 50
+        `;
 
-        const r = await pool.query(sql, params);
-        res.json({ ok: true, data: r.rows });
+        const result = await pool.query(sql, params);
+        res.json({ ok: true, data: result.rows });
     } catch (e) {
         next(e);
     }
@@ -314,7 +312,6 @@ router.get("/:id", requireAuth, requireRole("ADMIN", "STAFF", "MANAGER", "RECTOR
         const id = Number(req.params.id);
         const r = await pool.query(
             `SELECT d.*,
-        (SELECT COUNT(*) FROM diploma_files f WHERE f.diploma_id=d.id) AS file_count,
         (SELECT c.tx_id FROM chain_logs c WHERE c.diploma_id=d.id ORDER BY c.created_at DESC LIMIT 1) AS last_tx_id
        FROM diplomas d WHERE d.id=$1`,
             [id]

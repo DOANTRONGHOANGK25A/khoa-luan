@@ -118,8 +118,13 @@ export function DiplomaDetailPage() {
 
     const handleDownload = async (kind, fileName) => {
         try {
-            const blob = await downloadDiplomaFile(id, kind);
-            const url = window.URL.createObjectURL(blob);
+            // Dùng lại URL đã tải sẵn cho preview, nếu có
+            let url = fileUrls[kind];
+            if (!url) {
+                // Fallback: nếu chưa có preview thì mới gọi API
+                const blob = await downloadDiplomaFile(id, kind);
+                url = window.URL.createObjectURL(blob);
+            }
             const link = document.createElement("a");
             link.href = url;
             link.setAttribute("download", fileName || `${kind}.pdf`);

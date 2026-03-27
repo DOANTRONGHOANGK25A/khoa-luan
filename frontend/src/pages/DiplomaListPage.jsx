@@ -137,7 +137,7 @@ export function DiplomaListPage() {
             title: "Trạng thái",
             dataIndex: "status",
             width: 140,
-            filters: Object.values(STATUS).map((s) => ({ text: s, value: s })),
+            filters: Object.values(STATUS).map((s) => ({ text: getStatusLabel(s), value: s })),
             onFilter: (value, record) => record.status === value,
             render: (status) => (
                 <Tag icon={getStatusIcon(status)} color={getStatusColor(status)}>
