@@ -180,8 +180,8 @@ export function VerifyPage() {
             return <Tag icon={<InfoCircleOutlined />} color="default">NOT_FOUND_ONCHAIN</Tag>;
         }
         return verifyData.match
-            ? <Tag icon={<CheckCircleOutlined />} color="success">MATCH</Tag>
-            : <Tag icon={<CloseCircleOutlined />} color="error">MISMATCH</Tag>;
+            ? <Tag icon={<CheckCircleOutlined />} color="success">Hợp lệ</Tag>
+            : <Tag icon={<CloseCircleOutlined />} color="error">Không hợp lệ</Tag>;
     };
 
     return (
