@@ -34,7 +34,7 @@ function normGpa(x) {
  * Xây dựng văn bản chuẩn hóa (canonical text) mang tính tất định từ các trường thông tin cốt lõi
  * của văn bằng và mã băm SHA-256 của 3 file đính kèm.
  *
- * Thứ tự các trường là CỐ ĐỊNH (FIXED):
+ * Thứ tự các trường là CỐ ĐỊNH:
  *   serialNo, studentId, studentName, birthDate, major, ranking,
  *   gpa, graduationYear, portraitSha256, diplomaSha256, transcriptSha256
  *

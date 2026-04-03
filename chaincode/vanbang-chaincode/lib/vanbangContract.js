@@ -26,11 +26,11 @@ class VanBangContract extends Contract {
     async IssueDiploma(ctx, serialNo, jsonRecordString) {
         serialNo = ensureSerial(serialNo);
 
-        // Check if already exists
+        // Kiểm tra xem văn bằng đã tồn tại chưa
         const exists = await ctx.stub.getState(serialNo);
         if (exists && exists.length > 0) throw new Error("ALREADY_EXISTS");
 
-        // Parse input JSON
+        // Phân tích dữ liệu JSON đầu vào
         let input;
         try {
             input = JSON.parse(jsonRecordString);
@@ -54,7 +54,7 @@ class VanBangContract extends Contract {
         const txId = ctx.stub.getTxID();
         const issuedAt = ensureIsoTime(input.issuedAt);
 
-        // Build full on-chain object with all required fields
+        // Tạo đối tượng hoàn chỉnh để lưu trữ trên blockchain với tất cả các thông tin bắt buộc
         const obj = {
             serialNo,
             studentId: input.studentId,

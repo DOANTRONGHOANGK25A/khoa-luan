@@ -12,14 +12,14 @@ router.post("/wallet", requireAuth, requireRole("RECTOR"), async (req, res, next
     try {
         // 1) Đọc cấu hình Fabric CA từ biến môi trường
         const caConfig = {
-            url:             process.env.FABRIC_CA_URL,
-            name:            process.env.FABRIC_CA_NAME || undefined,
-            registrarId:     process.env.FABRIC_CA_REGISTRAR_ID,
+            url: process.env.FABRIC_CA_URL,
+            name: process.env.FABRIC_CA_NAME || undefined,
+            registrarId: process.env.FABRIC_CA_REGISTRAR_ID,
             registrarSecret: process.env.FABRIC_CA_REGISTRAR_SECRET,
-            affiliation:     process.env.FABRIC_CA_AFFILIATION || "org1.department1",
-            mspId:           process.env.FABRIC_MSPID || "Org1MSP",
-            verify:          process.env.FABRIC_CA_VERIFY !== "false", // mặc định verify=true
-            tlsCertPath:     process.env.FABRIC_CA_TLS_CERT_PATH,
+            affiliation: process.env.FABRIC_CA_AFFILIATION || "org1.department1",
+            mspId: process.env.FABRIC_MSPID || "Org1MSP",
+            verify: process.env.FABRIC_CA_VERIFY !== "false",
+            tlsCertPath: process.env.FABRIC_CA_TLS_CERT_PATH,
         };
 
         // Validate env
